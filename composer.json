@@ -1,0 +1,84 @@
+{
+    "name": "joshua-barbosa/azure-blob-sdk",
+    "description": "SDK PHP para o Azure Blob Storage, integrado ao Laravel: API fluente, driver de Storage, comandos Artisan e múltiplas conexões (SAS URL, connection string ou conta+chave).",
+    "keywords": [
+        "azure",
+        "azure-storage",
+        "blob",
+        "blob-storage",
+        "laravel",
+        "filesystem",
+        "sdk"
+    ],
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/joshua-barbosa/azure-blob-sdk",
+    "authors": [
+        {
+            "name": "Joshua Barbosa"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/joshua-barbosa/azure-blob-sdk/issues",
+        "source": "https://github.com/joshua-barbosa/azure-blob-sdk"
+    },
+    "funding": [
+        {
+            "type": "buy_me_a_coffee",
+            "url": "https://www.buymeacoffee.com/joshuabarbosa"
+        }
+    ],
+    "require": {
+        "php": "^8.0",
+        "ext-hash": "*",
+        "ext-json": "*",
+        "ext-simplexml": "*",
+        "illuminate/contracts": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
+        "illuminate/http": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
+        "illuminate/support": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
+        "guzzlehttp/guzzle": "^7.5",
+        "psr/log": "^1.1|^2.0|^3.0",
+        "symfony/http-foundation": "^5.4|^6.0|^7.0|^8.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^6.0|^7.0|^8.0|^9.0|^10.0|^11.0",
+        "phpunit/phpunit": "^9.5|^10.5|^11.0|^12.0",
+        "laravel/pint": "^1.13"
+    },
+    "suggest": {
+        "league/flysystem": "Necessário apenas para usar o driver de Storage (Storage::disk('azure')). O Laravel já o traz quando o filesystem é usado."
+    },
+    "autoload": {
+        "psr-4": {
+            "AzureBlob\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AzureBlob\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "AzureBlob\\Providers\\AzureBlobServiceProvider"
+            ],
+            "aliases": {
+                "Blob": "AzureBlob\\Facades\\Blob"
+            }
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "lint": "vendor/bin/pint --test",
+        "fix": "vendor/bin/pint"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

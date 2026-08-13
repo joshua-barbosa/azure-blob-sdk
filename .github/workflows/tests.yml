@@ -1,0 +1,91 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Laravel 8 traz Flysystem 1, cujo contrato de adaptador é
+          # incompatível com o do 3 — é a linha que exercita AzureBlobAdapterV1.
+          - php: '8.0'
+            laravel: '8.*'
+            testbench: '6.*'
+          - php: '8.1'
+            laravel: '9.*'
+            testbench: '7.*'
+          - php: '8.1'
+            laravel: '10.*'
+            testbench: '8.*'
+          - php: '8.2'
+            laravel: '11.*'
+            testbench: '9.*'
+          - php: '8.3'
+            laravel: '12.*'
+            testbench: '10.*'
+          - php: '8.3'
+            laravel: '13.*'
+            testbench: '11.*'
+          - php: '8.4'
+            laravel: '13.*'
+            testbench: '11.*'
+
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: hash, json, simplexml, mbstring, fileinfo
+          coverage: none
+
+      - name: Instalar dependências
+        run: |
+          # Laravel 8 a 11 estão EOL e carregam advisories, o que faz o Composer
+          # 2.10+ recusar a resolução. Vale só para esta matriz de teste; a
+          # aplicação que consome o pacote decide por si.
+          composer config policy.advisories.block false
+
+          # O Pint exige PHP 8.1+. É ferramenta de formatação, não afeta quem
+          # consome o pacote — nas linhas de PHP 8.0 ele simplesmente sai.
+          if [ "${{ matrix.php }}" = "8.0" ]; then
+            composer remove --dev laravel/pint --no-update
+          fi
+
+          # illuminate/* está em "require", então usamos --with em vez de
+          # "require --dev", que moveria os pacotes para require-dev.
+          composer require --no-update --dev "orchestra/testbench:${{ matrix.testbench }}"
+          composer update -W --prefer-dist --no-interaction --no-progress \
+            --with "illuminate/contracts:${{ matrix.laravel }}" \
+            --with "illuminate/http:${{ matrix.laravel }}" \
+            --with "illuminate/support:${{ matrix.laravel }}"
+
+      - name: Versões resolvidas
+        run: composer show laravel/framework league/flysystem orchestra/testbench phpunit/phpunit || true
+
+      - name: Testes
+        run: vendor/bin/phpunit
+
+  lint:
+    runs-on: ubuntu-latest
+    name: pint
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - run: composer install --prefer-dist --no-interaction --no-progress
+
+      - run: vendor/bin/pint --test
