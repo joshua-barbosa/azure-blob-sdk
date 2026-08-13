@@ -310,6 +310,40 @@ class ReadOperationsTest extends TestCase
         }
     }
 
+    public function test_stream_devolve_um_recurso_legivel(): void
+    {
+        Http::fake(['*' => Http::response('conteúdo em stream', 200)]);
+
+        $stream = Blob::stream('grande.bin');
+
+        $this->assertIsResource($stream);
+        $this->assertSame('conteúdo em stream', stream_get_contents($stream));
+
+        fclose($stream);
+    }
+
+    public function test_base64_codifica_o_conteudo_binario(): void
+    {
+        $bytes = "\x00\x01\xFF";
+
+        Http::fake(['*' => Http::response($bytes, 200, $this->propertyHeaders(3, 'application/octet-stream'))]);
+
+        $this->assertSame(base64_encode($bytes), Blob::download('a.bin')->base64());
+    }
+
+    public function test_info_descreve_a_conexao(): void
+    {
+        $this->assertSame(
+            'Conta: '.self::ACCOUNT.' | Container: '.self::CONTAINER.' | Auth: conta+chave',
+            Blob::info()
+        );
+
+        $this->assertStringContainsString(
+            '[SOMENTE LEITURA]',
+            $this->app->make(AzureBlob::class)->connection('somente-leitura')->info()
+        );
+    }
+
     // ========================================================================
     // URLs
     // ========================================================================

@@ -189,11 +189,23 @@ Use `AZURE_PROXY_HTTP` e `AZURE_PROXY_HTTPS` quando precisar separá-los.
 vindo do `.env` como string é convertido para booleano, senão o Guzzle o
 interpretaria como caminho de arquivo.
 
+### Endpoint
+
+Derivado automaticamente na maioria dos casos. Preencha para domínio próprio,
+nuvem soberana ou Azurite:
+
+```dotenv
+AZURE_STORAGE_URL=https://cdn.exemplo.com.br          # endpoint da conta
+AZURE_STORAGE_ENDPOINT_SUFFIX=core.chinacloudapi.cn   # padrão: core.windows.net
+AZURE_BLOB_CONNECTION=default                         # conexão usada quando nenhuma é informada
+```
+
 ### Timeouts e limites
 
 ```dotenv
 AZURE_TIMEOUT=60                  # resposta completa (s); por bloco em uploads fatiados
 AZURE_CONNECT_TIMEOUT=10          # conexão TCP (s)
+AZURE_VERIFY_SSL=true             # false ou caminho de um CA bundle
 AZURE_MAX_DOWNLOAD_SIZE=5242880   # teto do download() em memória
 AZURE_BLOCK_SIZE=4194304          # acima disso o upload vai em blocos
 AZURE_API_VERSION=2022-11-02      # versão da REST API
@@ -390,16 +402,16 @@ composer test
 > PHP 8.0, remova-o antes: `composer remove --dev laravel/pint --no-update`. É o que
 > a linha de PHP 8.0 do CI faz.
 
-265 testes, 614 asserções. Cobertura: **87,06% de linhas / 74,90% de métodos**
+268 testes, 619 asserções. Cobertura: **87,13% de linhas / 75,29% de métodos**
 (medida com Xdebug em PHP 8.3 / Laravel 13).
 
 Rodado localmente em três pontos da matriz antes da publicação:
 
 | PHP | Laravel | Flysystem | PHPUnit | Resultado |
 |---|---|---|---|---|
-| 8.0.30 | 8.83 | 1.1 | 9.6 | 265 testes, 21 pulados |
-| 8.2.33 | 10.50 | 3.35 | 10.5 | 265 testes |
-| 8.3.33 | 13.25 | 3.35 | 12.5 | 265 testes |
+| 8.0.30 | 8.83 | 1.1 | 9.6 | 268 testes, 21 pulados |
+| 8.2.33 | 10.50 | 3.35 | 10.5 | 268 testes |
+| 8.3.33 | 13.25 | 3.35 | 12.5 | 268 testes |
 
 Os 21 pulados no Laravel 8 são os que instanciam o adaptador de Flysystem 3
 diretamente — lá esse caminho é coberto via `Storage::disk()`.

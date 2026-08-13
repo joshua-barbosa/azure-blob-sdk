@@ -1,0 +1,16 @@
+# Sem isto, todo `composer require` baixa também tests/, docs/ e a config de CI
+# — 176 KB de tests/ que ninguém que instala o pacote vai executar.
+/.github            export-ignore
+/docs               export-ignore
+/tests              export-ignore
+/.editorconfig      export-ignore
+/.gitattributes     export-ignore
+/.gitignore         export-ignore
+/phpunit.xml        export-ignore
+/pint.json          export-ignore
+
+# Normaliza fim de linha para quem contribui do Windows.
+*.php   text eol=lf diff=php
+*.md    text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
