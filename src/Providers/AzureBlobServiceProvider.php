@@ -162,10 +162,4 @@ class AzureBlobServiceProvider extends ServiceProvider
 
         $config->set("logging.channels.{$channel}", $definition);
     }
-
-    /** @return array<int,string> */
-    public function provides(): array
-    {
-        return [AzureBlob::class, BlobClient::class, 'azure-blob'];
-    }
 }

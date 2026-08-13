@@ -283,6 +283,21 @@ class ReadOperationsTest extends TestCase
         }
     }
 
+    public function test_erro_em_operacao_de_container_nao_corrompe_o_nome_no_contexto(): void
+    {
+        Http::fake(['*' => Http::response($this->errorXml('ContainerNotFound', 'não existe'), 404)]);
+
+        try {
+            Blob::list();
+            $this->fail('Esperava BlobNotFoundException.');
+        } catch (BlobNotFoundException $exception) {
+            // O caminho de uma listagem é só o container, sem barra. Um
+            // strpos() sem checagem devolveria "eu-container" aqui.
+            $this->assertSame('', $exception->context()['blob']);
+            $this->assertSame(self::CONTAINER, $exception->context()['container']);
+        }
+    }
+
     public function test_erro_sem_corpo_usa_o_cabecalho_x_ms_error_code(): void
     {
         Http::fake(['*' => Http::response('', 409, ['x-ms-error-code' => 'BlobAlreadyExists'])]);

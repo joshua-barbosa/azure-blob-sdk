@@ -149,7 +149,11 @@ class RestClient
         $error = Xml::error((string) $response->body());
         $code = $error['code'] ?? $response->header('x-ms-error-code') ?: null;
 
-        $blob = Path::normalize(substr($path, (int) strpos($path, '/') + 1));
+        // O caminho é "container/blob", mas operações de container (list) vêm
+        // só com o container. Sem a checagem, strpos() devolve false, o (int)
+        // vira 0 e o substr comeria a primeira letra do nome.
+        $separator = strpos($path, '/');
+        $blob = $separator === false ? '' : Path::normalize(substr($path, $separator + 1));
 
         if ($status === 404) {
             $exception = BlobNotFoundException::make($blob, $this->config->container, $response->toException());

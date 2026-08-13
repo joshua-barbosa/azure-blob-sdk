@@ -33,12 +33,14 @@
         "ext-hash": "*",
         "ext-json": "*",
         "ext-simplexml": "*",
+        "guzzlehttp/guzzle": "^7.5",
+        "guzzlehttp/psr7": "^2.4",
+        "illuminate/console": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
         "illuminate/contracts": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
+        "illuminate/filesystem": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
         "illuminate/http": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
         "illuminate/support": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
-        "guzzlehttp/guzzle": "^7.5",
-        "psr/log": "^1.1|^2.0|^3.0",
-        "symfony/http-foundation": "^5.4|^6.0|^7.0|^8.0"
+        "psr/log": "^1.1|^2.0|^3.0"
     },
     "require-dev": {
         "orchestra/testbench": "^6.0|^7.0|^8.0|^9.0|^10.0|^11.0",
@@ -46,7 +48,8 @@
         "laravel/pint": "^1.13"
     },
     "suggest": {
-        "league/flysystem": "Necessário apenas para usar o driver de Storage (Storage::disk('azure')). O Laravel já o traz quando o filesystem é usado."
+        "league/flysystem": "Necessário apenas para o driver de Storage (Storage::disk('azure')). O Laravel já o traz quando o filesystem é usado.",
+        "symfony/mime": "Melhora a detecção de Content-Type no upload. Sem ele o pacote usa uma tabela interna de extensões comuns."
     },
     "autoload": {
         "psr-4": {

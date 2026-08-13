@@ -390,16 +390,16 @@ composer test
 > PHP 8.0, remova-o antes: `composer remove --dev laravel/pint --no-update`. É o que
 > a linha de PHP 8.0 do CI faz.
 
-264 testes, 612 asserções. Cobertura: **87,00% de linhas / 74,62% de métodos**
+265 testes, 614 asserções. Cobertura: **87,06% de linhas / 74,90% de métodos**
 (medida com Xdebug em PHP 8.3 / Laravel 13).
 
 Rodado localmente em três pontos da matriz antes da publicação:
 
 | PHP | Laravel | Flysystem | PHPUnit | Resultado |
 |---|---|---|---|---|
-| 8.0.30 | 8.83 | 1.1 | 9.6 | 264 testes, 21 pulados |
-| 8.2.33 | 10.50 | 3.35 | 10.5 | 264 testes |
-| 8.3.33 | 13.25 | 3.35 | 12.5 | 264 testes |
+| 8.0.30 | 8.83 | 1.1 | 9.6 | 265 testes, 21 pulados |
+| 8.2.33 | 10.50 | 3.35 | 10.5 | 265 testes |
+| 8.3.33 | 13.25 | 3.35 | 12.5 | 265 testes |
 
 Os 21 pulados no Laravel 8 são os que instanciam o adaptador de Flysystem 3
 diretamente — lá esse caminho é coberto via `Storage::disk()`.
@@ -448,6 +448,14 @@ Bugs reais encontrados pela suíte e pela validação na matriz, não hipóteses
 - **SAS URL do Azurite era mal interpretada.** A heurística "host tem ponto →
   conta no subdomínio" dava falso positivo em `127.0.0.1` e descartava o
   endpoint. Passou a testar `FILTER_VALIDATE_IP`.
+- **Nome do blob corrompido no contexto de erro.** Numa falha de operação de
+  container (o caminho não tem barra), `strpos()` devolvia `false`, o cast para
+  `int` virava `0` e o `substr` comia a primeira letra: o log dizia
+  `eu-container`. Agora o campo fica vazio, que é o correto.
+- **Dependências erradas no `composer.json`.** `symfony/http-foundation` foi
+  herdado do pacote de referência e nunca usado; em compensação
+  `illuminate/console`, `illuminate/filesystem` e `guzzlehttp/psr7` eram usados
+  sem serem declarados.
 
 ## Pendências conhecidas
 

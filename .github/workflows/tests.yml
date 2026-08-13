@@ -64,7 +64,9 @@ jobs:
           # "require --dev", que moveria os pacotes para require-dev.
           composer require --no-update --dev "orchestra/testbench:${{ matrix.testbench }}"
           composer update -W --prefer-dist --no-interaction --no-progress \
+            --with "illuminate/console:${{ matrix.laravel }}" \
             --with "illuminate/contracts:${{ matrix.laravel }}" \
+            --with "illuminate/filesystem:${{ matrix.laravel }}" \
             --with "illuminate/http:${{ matrix.laravel }}" \
             --with "illuminate/support:${{ matrix.laravel }}"
 
