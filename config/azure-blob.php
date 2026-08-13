@@ -7,7 +7,7 @@ return [
     | Conexão padrão
     |--------------------------------------------------------------------------
     |
-    | Nome da conexão usada quando nenhuma é informada — em Blob::list(), no
+    | Nome da conexão usada quando nenhuma é informada — em AzureBlob::list(), no
     | comando `azure:list` sem --connection, e como base do driver de Storage.
     |
     */
@@ -39,7 +39,7 @@ return [
     | reaproveita o token do container, e a expiração é a dele.
     |
     | Para várias contas, declare quantas conexões precisar e selecione com
-    | Blob::connection('nome') — é o equivalente ao AZURE_PREFIX da ferramenta
+    | AzureBlob::connection('nome') — é o equivalente ao AZURE_PREFIX da ferramenta
     | MCP que este pacote substitui.
     |
     */

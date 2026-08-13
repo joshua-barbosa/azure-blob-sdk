@@ -2,11 +2,11 @@
 
 namespace AzureBlob\Tests\Feature;
 
-use AzureBlob\AzureBlob;
 use AzureBlob\BlobClient;
+use AzureBlob\BlobManager;
 use AzureBlob\Exceptions\AzureBlobException;
 use AzureBlob\Exceptions\ConfigurationException;
-use AzureBlob\Facades\Blob;
+use AzureBlob\Facades\AzureBlob;
 use AzureBlob\Providers\AzureBlobServiceProvider;
 use AzureBlob\Support\Config;
 use AzureBlob\Tests\TestCase;
@@ -18,8 +18,8 @@ class ConfigurationTest extends TestCase
 {
     public function test_o_gerenciador_e_um_singleton_no_container(): void
     {
-        $this->assertInstanceOf(AzureBlob::class, $this->app->make(AzureBlob::class));
-        $this->assertSame($this->app->make(AzureBlob::class), $this->app->make('azure-blob'));
+        $this->assertInstanceOf(BlobManager::class, $this->app->make(BlobManager::class));
+        $this->assertSame($this->app->make(BlobManager::class), $this->app->make('azure-blob'));
     }
 
     public function test_injetar_blob_client_resolve_a_conexao_padrao(): void
@@ -32,7 +32,7 @@ class ConfigurationTest extends TestCase
 
     public function test_conexoes_sao_reaproveitadas_entre_chamadas(): void
     {
-        $manager = $this->app->make(AzureBlob::class);
+        $manager = $this->app->make(BlobManager::class);
 
         $this->assertSame($manager->connection('sas'), $manager->connection('sas'));
         $this->assertNotSame($manager->connection('sas'), $manager->connection('default'));
@@ -40,7 +40,7 @@ class ConfigurationTest extends TestCase
 
     public function test_purge_forca_a_reconstrucao_da_conexao(): void
     {
-        $manager = $this->app->make(AzureBlob::class);
+        $manager = $this->app->make(BlobManager::class);
         $antes = $manager->connection();
 
         $manager->purge('default');
@@ -50,7 +50,7 @@ class ConfigurationTest extends TestCase
 
     public function test_purge_sem_argumento_limpa_todas(): void
     {
-        $manager = $this->app->make(AzureBlob::class);
+        $manager = $this->app->make(BlobManager::class);
         $antes = $manager->connection('sas');
 
         $manager->purge();
@@ -63,19 +63,19 @@ class ConfigurationTest extends TestCase
         $this->expectException(ConfigurationException::class);
         $this->expectExceptionMessage('conexão "inexistente" não encontrada');
 
-        $this->app->make(AzureBlob::class)->connection('inexistente');
+        $this->app->make(BlobManager::class)->connection('inexistente');
     }
 
     public function test_disk_e_alias_de_connection(): void
     {
-        $manager = $this->app->make(AzureBlob::class);
+        $manager = $this->app->make(BlobManager::class);
 
         $this->assertSame($manager->connection('sas'), $manager->disk('sas'));
     }
 
     public function test_lista_os_nomes_e_a_conexao_padrao(): void
     {
-        $manager = $this->app->make(AzureBlob::class);
+        $manager = $this->app->make(BlobManager::class);
 
         $this->assertSame('default', $manager->defaultConnection());
         $this->assertSame(
@@ -88,7 +88,7 @@ class ConfigurationTest extends TestCase
     {
         Http::fake(['*' => Http::response($this->listXml(), 200)]);
 
-        $client = $this->app->make(AzureBlob::class)->build([
+        $client = $this->app->make(BlobManager::class)->build([
             'sas_url' => 'https://outraconta.blob.core.windows.net/avulso?sig=xyz',
         ], 'do-banco');
 
@@ -107,7 +107,7 @@ class ConfigurationTest extends TestCase
     {
         Http::fake(['*' => Http::response($this->listXml(), 200)]);
 
-        Blob::list();
+        AzureBlob::list();
 
         Http::assertSent(fn (Request $request): bool => str_starts_with(
             $request->url(),
@@ -117,7 +117,7 @@ class ConfigurationTest extends TestCase
 
     public function test_container_devolve_um_cliente_novo_sem_afetar_o_original(): void
     {
-        $manager = $this->app->make(AzureBlob::class);
+        $manager = $this->app->make(BlobManager::class);
         $original = $manager->connection();
         $outro = $original->container('arquivo-morto');
 
@@ -131,7 +131,7 @@ class ConfigurationTest extends TestCase
     {
         Http::fake(['*' => Http::response($this->listXml(), 200)]);
 
-        $client = $this->app->make(AzureBlob::class)->connection('connection-string');
+        $client = $this->app->make(BlobManager::class)->connection('connection-string');
 
         $this->assertSame(Config::AUTH_CONNECTION_STRING, $client->config()->authMode);
 
@@ -173,7 +173,7 @@ class ConfigurationTest extends TestCase
 
     public function test_o_logger_resolvido_e_um_psr_logger(): void
     {
-        $client = $this->app->make(AzureBlob::class)->connection();
+        $client = $this->app->make(BlobManager::class)->connection();
 
         $this->assertInstanceOf(LoggerInterface::class, $client->client()->logger());
     }
@@ -182,7 +182,7 @@ class ConfigurationTest extends TestCase
     {
         Http::fake(['*' => Http::response($this->errorXml('AuthorizationFailure', 'negado'), 403)]);
 
-        $client = $this->app->make(AzureBlob::class)->connection('sas');
+        $client = $this->app->make(BlobManager::class)->connection('sas');
 
         try {
             $client->list();

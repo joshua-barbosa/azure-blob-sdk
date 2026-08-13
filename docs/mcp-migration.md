@@ -7,18 +7,18 @@ Blob Storage como ferramentas MCP. O comportamento é o mesmo; muda o meio.
 
 | Ferramenta MCP | Equivalente no pacote | Comando Artisan |
 | --- | --- | --- |
-| `blob_list` | `Blob::list($prefix, $max)` | `azure:list` |
-| `blob_download` | `Blob::download($nome)` | `azure:download` |
-| `blob_download_json` | `Blob::downloadJson($nome)` | `azure:download` |
-| `blob_get_properties` | `Blob::properties($nome)` | `azure:exists` |
-| `blob_exists` | `Blob::exists($nome)` | `azure:exists` |
-| `blob_get_url` | `Blob::url($nome)` | — |
-| `blob_generate_sas_url` | `Blob::temporaryUrl($nome, $horas, $perm)` | `azure:sas` |
-| `blob_upload` | `Blob::upload($nome, $conteudo)` | `azure:upload` |
-| `blob_upload_json` | `Blob::uploadJson($nome, $dados)` | `azure:upload` |
-| `blob_delete` | `Blob::delete($nome)` | `azure:delete` |
-| `blob_copy` | `Blob::copy($origem, $destino)` | `azure:copy` |
-| — (sem equivalente) | `Blob::info()` | `azure:info` |
+| `blob_list` | `AzureBlob::list($prefix, $max)` | `azure:list` |
+| `blob_download` | `AzureBlob::download($nome)` | `azure:download` |
+| `blob_download_json` | `AzureBlob::downloadJson($nome)` | `azure:download` |
+| `blob_get_properties` | `AzureBlob::properties($nome)` | `azure:exists` |
+| `blob_exists` | `AzureBlob::exists($nome)` | `azure:exists` |
+| `blob_get_url` | `AzureBlob::url($nome)` | — |
+| `blob_generate_sas_url` | `AzureBlob::temporaryUrl($nome, $horas, $perm)` | `azure:sas` |
+| `blob_upload` | `AzureBlob::upload($nome, $conteudo)` | `azure:upload` |
+| `blob_upload_json` | `AzureBlob::uploadJson($nome, $dados)` | `azure:upload` |
+| `blob_delete` | `AzureBlob::delete($nome)` | `azure:delete` |
+| `blob_copy` | `AzureBlob::copy($origem, $destino)` | `azure:copy` |
+| — (sem equivalente) | `AzureBlob::info()` | `azure:info` |
 
 ## Variáveis de ambiente
 
@@ -54,7 +54,7 @@ lugar a conexões nomeadas explícitas em `config/azure-blob.php`:
 ```
 
 ```php
-Blob::connection('apostilas')->list();
+AzureBlob::connection('apostilas')->list();
 ```
 
 O `.env` não precisa mudar: as variáveis prefixadas continuam com o mesmo nome,

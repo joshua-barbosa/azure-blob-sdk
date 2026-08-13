@@ -2,7 +2,7 @@
 
 namespace AzureBlob\Tests;
 
-use AzureBlob\Facades\Blob;
+use AzureBlob\Facades\AzureBlob;
 use AzureBlob\Providers\AzureBlobServiceProvider;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Facades\Artisan;
@@ -30,7 +30,7 @@ abstract class TestCase extends Orchestra
 
     protected function getPackageAliases($app): array
     {
-        return ['Blob' => Blob::class];
+        return ['Blob' => AzureBlob::class];
     }
 
     protected function defineEnvironment($app): void

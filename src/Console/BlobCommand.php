@@ -2,8 +2,8 @@
 
 namespace AzureBlob\Console;
 
-use AzureBlob\AzureBlob;
 use AzureBlob\BlobClient;
+use AzureBlob\BlobManager;
 use AzureBlob\Exceptions\AzureBlobException;
 use Illuminate\Console\Command;
 use Throwable;
@@ -21,7 +21,7 @@ abstract class BlobCommand extends Command
         {--connection= : Conexão de config/azure-blob.php (padrão: a conexão default)}
         {--container= : Container alvo (padrão: o da conexão)}';
 
-    public function __construct(protected AzureBlob $manager)
+    public function __construct(protected BlobManager $manager)
     {
         parent::__construct();
     }

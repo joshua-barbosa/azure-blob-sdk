@@ -2,8 +2,8 @@
 
 namespace AzureBlob\Facades;
 
-use AzureBlob\AzureBlob;
 use AzureBlob\BlobClient;
+use AzureBlob\BlobManager;
 use AzureBlob\Results\BlobContent;
 use AzureBlob\Results\BlobList;
 use AzureBlob\Results\BlobProperties;
@@ -13,7 +13,14 @@ use Illuminate\Support\Facades\Facade;
  * Facade do gerenciador de conexões.
  *
  * Chamadas sem `connection()` são encaminhadas para a conexão padrão, então
- * `Blob::list()` e `Blob::connection('default')->list()` são equivalentes.
+ * `AzureBlob::list()` e `AzureBlob::connection('default')->list()` são
+ * equivalentes.
+ *
+ * O alias global registrado é `AzureBlob`, não `Blob`: um alias `Blob` colidiria
+ * com facilidade numa aplicação que já tenha a própria classe com esse nome.
+ * Quem precisar do gerenciador e da facade no mesmo arquivo importa o primeiro
+ * como `AzureBlob\BlobManager` — foi para isso que ele deixou de se chamar
+ * `AzureBlob\AzureBlob`.
  *
  * @method static BlobClient connection(?string $name = null)
  * @method static BlobClient disk(?string $name = null)
@@ -56,13 +63,13 @@ use Illuminate\Support\Facades\Facade;
  * @method static string copy(string $source, string $destination, array $options = [])
  * @method static string move(string $source, string $destination, array $options = [])
  *
- * @see AzureBlob
+ * @see BlobManager
  * @see BlobClient
  */
-class Blob extends Facade
+class AzureBlob extends Facade
 {
     protected static function getFacadeAccessor(): string
     {
-        return AzureBlob::class;
+        return BlobManager::class;
     }
 }

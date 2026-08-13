@@ -26,7 +26,7 @@ use JsonSerializable;
  * Cada instância aponta para um container; `container()` devolve uma cópia
  * apontando para outro, sem alterar a original.
  *
- *     $blob = app(AzureBlob::class)->connection('apostilas');
+ *     $blob = app(BlobManager::class)->connection('apostilas');
  *
  *     $blob->list('2024/');
  *     $blob->download('2024/apostila.pdf')->saveTo('/tmp/a.pdf');

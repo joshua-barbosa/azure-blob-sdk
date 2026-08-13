@@ -2,11 +2,11 @@
 
 namespace AzureBlob\Tests\Feature;
 
-use AzureBlob\AzureBlob;
+use AzureBlob\BlobManager;
 use AzureBlob\Exceptions\AzureBlobException;
 use AzureBlob\Exceptions\BlobNotFoundException;
 use AzureBlob\Exceptions\BlobTooLargeException;
-use AzureBlob\Facades\Blob;
+use AzureBlob\Facades\AzureBlob;
 use AzureBlob\Tests\TestCase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -26,7 +26,7 @@ class ReadOperationsTest extends TestCase
             ], prefix: '2026/'), 200),
         ]);
 
-        $list = Blob::list('2026/', 50);
+        $list = AzureBlob::list('2026/', 50);
 
         $this->assertCount(2, $list);
         $this->assertSame(['2026/a.pdf', '2026/b.pdf'], $list->names());
@@ -49,7 +49,7 @@ class ReadOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response($this->listXml(), 200)]);
 
-        Blob::list();
+        AzureBlob::list();
 
         Http::assertSent(function (Request $request): bool {
             return str_starts_with($request->header('Authorization')[0] ?? '', 'SharedKey '.self::ACCOUNT.':')
@@ -62,7 +62,7 @@ class ReadOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response($this->listXml(), 200)]);
 
-        $this->app->make(AzureBlob::class)->connection('sas')->list();
+        $this->app->make(BlobManager::class)->connection('sas')->list();
 
         Http::assertSent(function (Request $request): bool {
             return ! $request->hasHeader('Authorization')
@@ -75,7 +75,7 @@ class ReadOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response($this->listXml(), 200)]);
 
-        Blob::list(null, 999999);
+        AzureBlob::list(null, 999999);
 
         Http::assertSent(fn (Request $request): bool => str_contains($request->url(), 'maxresults=5000'));
     }
@@ -96,7 +96,7 @@ class ReadOperationsTest extends TestCase
 
         $nomes = [];
 
-        foreach (Blob::listAll() as $item) {
+        foreach (AzureBlob::listAll() as $item) {
             $nomes[] = $item->name;
         }
 
@@ -113,7 +113,7 @@ class ReadOperationsTest extends TestCase
             '*' => Http::response($this->listXml([['name' => '2026/a.pdf']], ['2026/janeiro/']), 200),
         ]);
 
-        $list = Blob::directory('2026');
+        $list = AzureBlob::directory('2026');
 
         $this->assertCount(1, $list->items);
         $this->assertCount(1, $list->directories);
@@ -133,7 +133,7 @@ class ReadOperationsTest extends TestCase
             '*' => Http::response('conteúdo do arquivo', 200, $this->propertyHeaders(21, 'text/plain')),
         ]);
 
-        $content = Blob::download('pasta/a.txt');
+        $content = AzureBlob::download('pasta/a.txt');
 
         $this->assertSame('conteúdo do arquivo', $content->contents());
         $this->assertSame('pasta/a.txt', $content->name);
@@ -152,14 +152,14 @@ class ReadOperationsTest extends TestCase
         $this->expectException(BlobTooLargeException::class);
         $this->expectExceptionMessage('excede o limite');
 
-        Blob::download('grande.zip');
+        AzureBlob::download('grande.zip');
     }
 
     public function test_limite_de_download_pode_ser_elevado_na_chamada(): void
     {
         Http::fake(['*' => Http::response('ok', 200, $this->propertyHeaders(10 * 1024 * 1024))]);
 
-        $content = Blob::download('grande.zip', ['max_size' => 50 * 1024 * 1024]);
+        $content = AzureBlob::download('grande.zip', ['max_size' => 50 * 1024 * 1024]);
 
         $this->assertSame('ok', $content->contents());
     }
@@ -168,7 +168,7 @@ class ReadOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('bytes', 200)]);
 
-        $this->assertSame('bytes', Blob::get('a.bin'));
+        $this->assertSame('bytes', AzureBlob::get('a.bin'));
         Http::assertSentCount(1);
     }
 
@@ -178,7 +178,7 @@ class ReadOperationsTest extends TestCase
             '*' => Http::response('{"total":2,"itens":["a","b"]}', 200, ['Content-Type' => 'application/json']),
         ]);
 
-        $this->assertSame(['total' => 2, 'itens' => ['a', 'b']], Blob::downloadJson('dados.json'));
+        $this->assertSame(['total' => 2, 'itens' => ['a', 'b']], AzureBlob::downloadJson('dados.json'));
     }
 
     public function test_download_json_com_corpo_invalido_lanca_excecao(): void
@@ -188,7 +188,7 @@ class ReadOperationsTest extends TestCase
         $this->expectException(AzureBlobException::class);
         $this->expectExceptionMessage('não contém JSON válido');
 
-        Blob::downloadJson('dados.json');
+        AzureBlob::downloadJson('dados.json');
     }
 
     public function test_download_to_grava_no_disco(): void
@@ -197,7 +197,7 @@ class ReadOperationsTest extends TestCase
 
         $path = sys_get_temp_dir().'/azure-blob-'.uniqid().'.txt';
 
-        $bytes = Blob::downloadTo('a.txt', $path);
+        $bytes = AzureBlob::downloadTo('a.txt', $path);
 
         $this->assertSame(18, $bytes);
         $this->assertSame('conteudo em stream', file_get_contents($path));
@@ -213,7 +213,7 @@ class ReadOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 200, $this->propertyHeaders(4096))]);
 
-        $properties = Blob::properties('pasta/a.pdf');
+        $properties = AzureBlob::properties('pasta/a.pdf');
 
         $this->assertSame(4096, $properties->size);
         $this->assertSame('application/pdf', $properties->contentType);
@@ -232,24 +232,24 @@ class ReadOperationsTest extends TestCase
                 ->push('', 404),
         ]);
 
-        $this->assertTrue(Blob::exists('existe.pdf'));
-        $this->assertFalse(Blob::exists('nao-existe.pdf'));
+        $this->assertTrue(AzureBlob::exists('existe.pdf'));
+        $this->assertFalse(AzureBlob::exists('nao-existe.pdf'));
     }
 
     public function test_missing_e_o_inverso_de_exists(): void
     {
         Http::fake(['*' => Http::response('', 404)]);
 
-        $this->assertTrue(Blob::missing('x.pdf'));
+        $this->assertTrue(AzureBlob::missing('x.pdf'));
     }
 
     public function test_atalhos_de_metadados(): void
     {
         Http::fake(['*' => Http::response('', 200, $this->propertyHeaders(2048, 'image/png'))]);
 
-        $this->assertSame(2048, Blob::size('a.png'));
-        $this->assertSame('image/png', Blob::mimeType('a.png'));
-        $this->assertSame('2026-01-06T12:30:00+00:00', Blob::lastModified('a.png')->format('c'));
+        $this->assertSame(2048, AzureBlob::size('a.png'));
+        $this->assertSame('image/png', AzureBlob::mimeType('a.png'));
+        $this->assertSame('2026-01-06T12:30:00+00:00', AzureBlob::lastModified('a.png')->format('c'));
     }
 
     public function test_404_em_properties_vira_blob_not_found(): void
@@ -257,7 +257,7 @@ class ReadOperationsTest extends TestCase
         Http::fake(['*' => Http::response($this->errorXml('BlobNotFound', 'The specified blob does not exist.'), 404)]);
 
         try {
-            Blob::properties('sumiu.pdf');
+            AzureBlob::properties('sumiu.pdf');
             $this->fail('Esperava BlobNotFoundException.');
         } catch (BlobNotFoundException $exception) {
             $this->assertSame(404, $exception->status());
@@ -274,7 +274,7 @@ class ReadOperationsTest extends TestCase
         ]);
 
         try {
-            Blob::list();
+            AzureBlob::list();
             $this->fail('Esperava AzureBlobException.');
         } catch (AzureBlobException $exception) {
             $this->assertSame(403, $exception->status());
@@ -288,7 +288,7 @@ class ReadOperationsTest extends TestCase
         Http::fake(['*' => Http::response($this->errorXml('ContainerNotFound', 'não existe'), 404)]);
 
         try {
-            Blob::list();
+            AzureBlob::list();
             $this->fail('Esperava BlobNotFoundException.');
         } catch (BlobNotFoundException $exception) {
             // O caminho de uma listagem é só o container, sem barra. Um
@@ -303,7 +303,7 @@ class ReadOperationsTest extends TestCase
         Http::fake(['*' => Http::response('', 409, ['x-ms-error-code' => 'BlobAlreadyExists'])]);
 
         try {
-            Blob::list();
+            AzureBlob::list();
             $this->fail('Esperava AzureBlobException.');
         } catch (AzureBlobException $exception) {
             $this->assertSame('BlobAlreadyExists', $exception->errorCode());
@@ -314,7 +314,7 @@ class ReadOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('conteúdo em stream', 200)]);
 
-        $stream = Blob::stream('grande.bin');
+        $stream = AzureBlob::stream('grande.bin');
 
         $this->assertIsResource($stream);
         $this->assertSame('conteúdo em stream', stream_get_contents($stream));
@@ -328,19 +328,19 @@ class ReadOperationsTest extends TestCase
 
         Http::fake(['*' => Http::response($bytes, 200, $this->propertyHeaders(3, 'application/octet-stream'))]);
 
-        $this->assertSame(base64_encode($bytes), Blob::download('a.bin')->base64());
+        $this->assertSame(base64_encode($bytes), AzureBlob::download('a.bin')->base64());
     }
 
     public function test_info_descreve_a_conexao(): void
     {
         $this->assertSame(
             'Conta: '.self::ACCOUNT.' | Container: '.self::CONTAINER.' | Auth: conta+chave',
-            Blob::info()
+            AzureBlob::info()
         );
 
         $this->assertStringContainsString(
             '[SOMENTE LEITURA]',
-            $this->app->make(AzureBlob::class)->connection('somente-leitura')->info()
+            $this->app->make(BlobManager::class)->connection('somente-leitura')->info()
         );
     }
 
@@ -352,13 +352,13 @@ class ReadOperationsTest extends TestCase
     {
         $this->assertSame(
             self::ENDPOINT.'/'.self::CONTAINER.'/pasta%20a/rela%C3%A7%C3%A3o.pdf',
-            Blob::url('pasta a/relação.pdf')
+            AzureBlob::url('pasta a/relação.pdf')
         );
     }
 
     public function test_temporary_url_assina_um_sas_novo_no_modo_chave(): void
     {
-        $url = Blob::temporaryUrl('pasta/a.pdf', 2, 'rw');
+        $url = AzureBlob::temporaryUrl('pasta/a.pdf', 2, 'rw');
 
         parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
 
@@ -370,7 +370,7 @@ class ReadOperationsTest extends TestCase
 
     public function test_temporary_url_reaproveita_o_token_no_modo_sas(): void
     {
-        $client = $this->app->make(AzureBlob::class)->connection('sas');
+        $client = $this->app->make(BlobManager::class)->connection('sas');
 
         $url = $client->temporaryUrl('a.pdf', 5, 'rwd');
 
@@ -381,7 +381,7 @@ class ReadOperationsTest extends TestCase
 
     public function test_temporary_container_url(): void
     {
-        $url = Blob::temporaryContainerUrl(1, 'rl');
+        $url = AzureBlob::temporaryContainerUrl(1, 'rl');
 
         parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
 
@@ -395,8 +395,8 @@ class ReadOperationsTest extends TestCase
         Http::fake();
 
         $this->assertSame(
-            parse_url(Blob::sasUrl('a.pdf'), PHP_URL_PATH),
-            parse_url(Blob::temporaryUrl('a.pdf'), PHP_URL_PATH),
+            parse_url(AzureBlob::sasUrl('a.pdf'), PHP_URL_PATH),
+            parse_url(AzureBlob::temporaryUrl('a.pdf'), PHP_URL_PATH),
         );
     }
 }

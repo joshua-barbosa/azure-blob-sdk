@@ -67,7 +67,7 @@
                 "AzureBlob\\Providers\\AzureBlobServiceProvider"
             ],
             "aliases": {
-                "Blob": "AzureBlob\\Facades\\Blob"
+                "AzureBlob": "AzureBlob\\Facades\\AzureBlob"
             }
         }
     },

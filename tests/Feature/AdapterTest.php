@@ -2,7 +2,7 @@
 
 namespace AzureBlob\Tests\Feature;
 
-use AzureBlob\AzureBlob;
+use AzureBlob\BlobManager;
 use AzureBlob\Filesystem\AzureBlobAdapter;
 use AzureBlob\Support\Logger;
 use AzureBlob\Tests\TestCase;
@@ -35,7 +35,7 @@ class AdapterTest extends TestCase
         // que ela implementa não existe lá.
         $this->requireFlysystem3();
 
-        return new AzureBlobAdapter($this->app->make(AzureBlob::class)->connection(), $prefix);
+        return new AzureBlobAdapter($this->app->make(BlobManager::class)->connection(), $prefix);
     }
 
     public function test_directory_exists_lista_um_item_do_prefixo(): void

@@ -2,8 +2,8 @@
 
 namespace AzureBlob\Providers;
 
-use AzureBlob\AzureBlob;
 use AzureBlob\BlobClient;
+use AzureBlob\BlobManager;
 use AzureBlob\Console;
 use AzureBlob\Filesystem\AzureBlobAdapter;
 use AzureBlob\Filesystem\AzureBlobAdapterV1;
@@ -40,17 +40,17 @@ class AzureBlobServiceProvider extends ServiceProvider
 
         $this->registerLogChannel();
 
-        $this->app->singleton(AzureBlob::class, function ($app): AzureBlob {
+        $this->app->singleton(BlobManager::class, function ($app): BlobManager {
             /** @var ConfigRepository $config */
             $config = $app->make('config');
 
-            return new AzureBlob((array) $config->get('azure-blob', []), $app);
+            return new BlobManager((array) $config->get('azure-blob', []), $app);
         });
 
-        $this->app->alias(AzureBlob::class, 'azure-blob');
+        $this->app->alias(BlobManager::class, 'azure-blob');
 
         // Injetar BlobClient direto num controller resolve a conexão padrão.
-        $this->app->bind(BlobClient::class, fn ($app): BlobClient => $app->make(AzureBlob::class)->connection());
+        $this->app->bind(BlobClient::class, fn ($app): BlobClient => $app->make(BlobManager::class)->connection());
     }
 
     public function boot(): void
@@ -86,7 +86,7 @@ class AzureBlobServiceProvider extends ServiceProvider
         // provider. Por isso a montagem do disco é uma chamada estática
         // qualificada, que independe do escopo em que a closure roda.
         Storage::extend(self::DRIVER, function ($app, array $config) {
-            $manager = $app->make(AzureBlob::class);
+            $manager = $app->make(BlobManager::class);
 
             $client = isset($config['sas_url']) || isset($config['connection_string']) || isset($config['key'])
                 ? $manager->build($config, $config['connection'] ?? 'filesystem')

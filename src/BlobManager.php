@@ -14,16 +14,16 @@ use Illuminate\Contracts\Container\Container;
  * mantém em cache pelo tempo de vida do processo — a resolução envolve parsear
  * SAS URL/connection string, o que não vale repetir a cada chamada.
  *
- *     app(AzureBlob::class)->connection('apostilas')->list();
- *     Blob::connection('contratos')->upload('a.pdf', $bytes);
+ *     app(BlobManager::class)->connection('apostilas')->list();
+ *     AzureBlob::connection('contratos')->upload('a.pdf', $bytes);
  *
  * Também aceita configuração ad hoc, sem passar pelo arquivo de config:
  *
- *     AzureBlob::make(['sas_url' => $url]);
+ *     BlobManager::make(['sas_url' => $url]);
  *
  * @mixin BlobClient
  */
-class AzureBlob
+class BlobManager
 {
     /** @var array<string,BlobClient> */
     private array $clients = [];
@@ -130,7 +130,7 @@ class AzureBlob
 
     /**
      * Encaminha chamadas diretas para a conexão padrão, para que
-     * `Blob::list()` funcione sem `->connection()`.
+     * `AzureBlob::list()` funcione sem `->connection()`.
      *
      * @param  array<int,mixed>  $arguments
      */

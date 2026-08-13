@@ -17,14 +17,14 @@ está abandonado desde 2021 e não suporta PHP 8.2+ — é ele que costuma trava
 atualização de projetos que falam com o Azure.
 
 ```php
-use AzureBlob\Facades\Blob;
+use AzureBlob\Facades\AzureBlob;
 
-Blob::list('apostilas/2026/');
-Blob::download('apostilas/2026/matematica.pdf')->saveTo('/tmp/mat.pdf');
-Blob::upload('apostilas/2026/nova.pdf', $conteudo);
-Blob::temporaryUrl('apostilas/2026/matematica.pdf', 2);
+AzureBlob::list('apostilas/2026/');
+AzureBlob::download('apostilas/2026/matematica.pdf')->saveTo('/tmp/mat.pdf');
+AzureBlob::upload('apostilas/2026/nova.pdf', $conteudo);
+AzureBlob::temporaryUrl('apostilas/2026/matematica.pdf', 2);
 
-Blob::connection('contratos')->uploadJson('metadados.json', $dados);
+AzureBlob::connection('contratos')->uploadJson('metadados.json', $dados);
 ```
 
 ## Compatibilidade
@@ -165,14 +165,14 @@ Declare quantas conexões precisar em `config/azure-blob.php` e selecione pelo n
 ```
 
 ```php
-Blob::connection('apostilas')->list();
+AzureBlob::connection('apostilas')->list();
 ```
 
 Credenciais que não vêm do arquivo de config (uma conta por cliente, guardada no
 banco) podem ser montadas na hora:
 
 ```php
-$blob = app(AzureBlob::class)->build(['sas_url' => $cliente->azure_sas_url]);
+$blob = app(BlobManager::class)->build(['sas_url' => $cliente->azure_sas_url]);
 ```
 
 ### Proxy
@@ -238,50 +238,54 @@ a expiração.
 ### Facade
 
 ```php
-use AzureBlob\Facades\Blob;
+use AzureBlob\Facades\AzureBlob;
 
-Blob::list('2026/');                    // conexão padrão
-Blob::connection('apostilas')->list();  // conexão nomeada
+AzureBlob::list('2026/');                    // conexão padrão
+AzureBlob::connection('apostilas')->list();  // conexão nomeada
 ```
 
 ### Injeção de dependência
 
 ```php
-use AzureBlob\AzureBlob;
 use AzureBlob\BlobClient;
+use AzureBlob\BlobManager;
 
 public function __construct(private BlobClient $blob) {}      // conexão padrão
-public function __construct(private AzureBlob $azure) {}      // gerenciador
+public function __construct(private BlobManager $azure) {}    // gerenciador
 
 $this->azure->connection('contratos')->upload('a.pdf', $bytes);
 ```
 
+> O gerenciador se chama `BlobManager`, e não `AzureBlob`, justamente para não
+> colidir com a facade — que é registrada com o alias global `AzureBlob`. Assim
+> os dois convivem no mesmo arquivo sem precisar de `as`.
+
 ### Listar
 
 ```php
-$lista = Blob::list('2026/', maxResults: 100);
+$lista = AzureBlob::list('2026/', maxResults: 100);
 
 foreach ($lista as $item) {
     echo $item->name, ' ', $item->humanSize(), PHP_EOL;
 }
 
 // Todas as páginas, sem carregar tudo na memória
-foreach (Blob::listAll('2026/') as $item) { /* ... */ }
+foreach (AzureBlob::listAll('2026/') as $item) { /* ... */ }
 
 // Listagem rasa: subpastas agrupadas em vez da árvore inteira
-$nivel = Blob::directory('2026');
+$nivel = AzureBlob::directory('2026');
 $nivel->directories;   // BlobItem[] com isDirectory = true
 ```
 
 ### Baixar
 
 ```php
-$conteudo = Blob::download('a.pdf');    // BlobContent
+$conteudo = AzureBlob::download('a.pdf');    // BlobContent
 $conteudo->contents();
 $conteudo->saveTo('/tmp/a.pdf');
 
-Blob::downloadJson('dados.json');               // array direto
-Blob::downloadTo('grande.zip', '/tmp/g.zip');   // stream para disco
+AzureBlob::downloadJson('dados.json');               // array direto
+AzureBlob::downloadTo('grande.zip', '/tmp/g.zip');   // stream para disco
 ```
 
 `download()` recusa blobs acima de `max_download_size` com `BlobTooLargeException`.
@@ -291,11 +295,11 @@ memória constante.
 ### Enviar
 
 ```php
-Blob::upload('a.txt', 'conteúdo');
-Blob::uploadJson('dados.json', ['total' => 2]);
-Blob::uploadFile('destino/a.pdf', '/tmp/local.pdf');
+AzureBlob::upload('a.txt', 'conteúdo');
+AzureBlob::uploadJson('dados.json', ['total' => 2]);
+AzureBlob::uploadFile('destino/a.pdf', '/tmp/local.pdf');
 
-Blob::upload('a.pdf', $bytes, [
+AzureBlob::upload('a.pdf', $bytes, [
     'content_type' => 'application/pdf',   // detectado pela extensão se omitido
     'overwrite'    => false,               // falha se já existir
     'metadata'     => ['origem' => 'web'],
@@ -308,19 +312,19 @@ Acima de `block_size` o envio é fatiado automaticamente em `Put Block` +
 ### Remover, copiar e mover
 
 ```php
-Blob::delete('a.pdf');                    // false se já não existia
-Blob::deleteDirectory('2026/rascunhos');  // devolve a quantidade removida
+AzureBlob::delete('a.pdf');                    // false se já não existia
+AzureBlob::deleteDirectory('2026/rascunhos');  // devolve a quantidade removida
 
-Blob::copy('a.pdf', 'b.pdf', ['destination_container' => 'processados']);
-Blob::move('origem.pdf', 'arquivo-morto/origem.pdf');
+AzureBlob::copy('a.pdf', 'b.pdf', ['destination_container' => 'processados']);
+AzureBlob::move('origem.pdf', 'arquivo-morto/origem.pdf');
 ```
 
 ### URLs assinadas
 
 ```php
-Blob::url('a.pdf');                                  // pública, sem token
-Blob::temporaryUrl('a.pdf', 2, 'r');                 // 2 horas
-Blob::temporaryUrl('a.pdf', now()->addDay(), 'rw');  // instante explícito
+AzureBlob::url('a.pdf');                                  // pública, sem token
+AzureBlob::temporaryUrl('a.pdf', 2, 'r');                 // 2 horas
+AzureBlob::temporaryUrl('a.pdf', now()->addDay(), 'rw');  // instante explícito
 ```
 
 ### Storage::disk
@@ -368,7 +372,7 @@ use AzureBlob\Exceptions\AzureBlobException;
 use AzureBlob\Exceptions\BlobNotFoundException;
 
 try {
-    $conteudo = Blob::download('a.pdf');
+    $conteudo = AzureBlob::download('a.pdf');
 } catch (BlobNotFoundException $e) {
     // 404
 } catch (AzureBlobException $e) {
@@ -434,7 +438,7 @@ Http::fake([
     '*' => Http::response('', 201),
 ]);
 
-Blob::upload('a.txt', 'x');
+AzureBlob::upload('a.txt', 'x');
 
 Http::assertSent(fn ($request) => $request->method() === 'PUT');
 ```
@@ -464,6 +468,11 @@ Bugs reais encontrados pela suíte e pela validação na matriz, não hipóteses
   container (o caminho não tem barra), `strpos()` devolvia `false`, o cast para
   `int` virava `0` e o `substr` comia a primeira letra: o log dizia
   `eu-container`. Agora o campo fica vazio, que é o correto.
+- **A facade colidia com o gerenciador.** O alias global era `Blob` — genérico
+  demais para se registrar na aplicação inteira — e trocá-lo por `AzureBlob`
+  esbarrava na classe `AzureBlob\AzureBlob`: três arquivos de teste já não
+  conseguiam importar os dois juntos. O gerenciador virou `BlobManager`, que
+  forma par com `BlobClient` e libera o nome para a facade.
 - **Dependências erradas no `composer.json`.** `symfony/http-foundation` foi
   herdado do pacote de referência e nunca usado; em compensação
   `illuminate/console`, `illuminate/filesystem` e `guzzlehttp/psr7` eram usados
@@ -482,6 +491,15 @@ Bugs reais encontrados pela suíte e pela validação na matriz, não hipóteses
   com `allowSharedKeyAccess=false` não funciona com este pacote.
 - **Append blobs e page blobs não são suportados** — só block blobs, que é o que
   cobre armazenamento de arquivos.
+
+## Contribuindo
+
+Issues e pull requests são bem-vindos. O processo, os comandos e as armadilhas
+que já quebraram o pacote uma vez estão em [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Falha de segurança **não vai em issue pública** — ver [SECURITY.md](SECURITY.md).
+
+O histórico de versões está em [CHANGELOG.md](CHANGELOG.md).
 
 ## Apoie
 

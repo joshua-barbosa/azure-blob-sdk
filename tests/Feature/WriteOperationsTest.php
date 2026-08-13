@@ -2,10 +2,10 @@
 
 namespace AzureBlob\Tests\Feature;
 
-use AzureBlob\AzureBlob;
+use AzureBlob\BlobManager;
 use AzureBlob\Exceptions\AzureBlobException;
 use AzureBlob\Exceptions\ReadOnlyException;
-use AzureBlob\Facades\Blob;
+use AzureBlob\Facades\AzureBlob;
 use AzureBlob\Tests\TestCase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -20,7 +20,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 201)]);
 
-        $url = Blob::upload('pasta/a.txt', 'conteúdo');
+        $url = AzureBlob::upload('pasta/a.txt', 'conteúdo');
 
         $this->assertSame($this->blobUrl('pasta/a.txt'), $url);
 
@@ -37,7 +37,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 201)]);
 
-        Blob::upload('relatorio.pdf', 'x');
+        AzureBlob::upload('relatorio.pdf', 'x');
 
         Http::assertSent(fn (Request $request): bool => $request->header('Content-Type')[0] === 'application/pdf');
     }
@@ -46,7 +46,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 201)]);
 
-        Blob::upload('a.txt', 'x', ['content_type' => 'application/x-custom']);
+        AzureBlob::upload('a.txt', 'x', ['content_type' => 'application/x-custom']);
 
         Http::assertSent(fn (Request $request): bool => $request->header('Content-Type')[0] === 'application/x-custom');
     }
@@ -55,7 +55,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 201)]);
 
-        Blob::upload('a.txt', 'x', ['metadata' => ['origem' => 'web', 'usuario id' => '42', '9invalido' => 'z']]);
+        AzureBlob::upload('a.txt', 'x', ['metadata' => ['origem' => 'web', 'usuario id' => '42', '9invalido' => 'z']]);
 
         Http::assertSent(function (Request $request): bool {
             return $request->header('x-ms-meta-origem')[0] === 'web'
@@ -70,7 +70,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 201)]);
 
-        Blob::upload('a.txt', 'x', [
+        AzureBlob::upload('a.txt', 'x', [
             'cache_control' => 'max-age=3600',
             'content_disposition' => 'attachment; filename="a.txt"',
             'content_encoding' => 'gzip',
@@ -87,7 +87,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 201)]);
 
-        Blob::upload('a.txt', 'x', ['overwrite' => false]);
+        AzureBlob::upload('a.txt', 'x', ['overwrite' => false]);
 
         Http::assertSent(fn (Request $request): bool => $request->header('If-None-Match')[0] === '*');
     }
@@ -97,7 +97,7 @@ class WriteOperationsTest extends TestCase
         Http::fake(['*' => Http::response($this->errorXml('BlobAlreadyExists', 'The blob already exists.'), 409)]);
 
         try {
-            Blob::upload('a.txt', 'x', ['overwrite' => false]);
+            AzureBlob::upload('a.txt', 'x', ['overwrite' => false]);
             $this->fail('Esperava AzureBlobException.');
         } catch (AzureBlobException $exception) {
             $this->assertSame(409, $exception->status());
@@ -109,7 +109,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 201)]);
 
-        Blob::uploadJson('dados.json', ['nome' => 'ação', 'itens' => [1, 2]]);
+        AzureBlob::uploadJson('dados.json', ['nome' => 'ação', 'itens' => [1, 2]]);
 
         Http::assertSent(function (Request $request): bool {
             return $request->header('Content-Type')[0] === 'application/json'
@@ -126,7 +126,7 @@ class WriteOperationsTest extends TestCase
         $this->expectException(AzureBlobException::class);
         $this->expectExceptionMessage('não foi possível serializar');
 
-        Blob::uploadJson('a.json', ["\xB1\x31"]);
+        AzureBlob::uploadJson('a.json', ["\xB1\x31"]);
     }
 
     public function test_upload_file_le_do_disco_e_detecta_o_tipo(): void
@@ -136,7 +136,7 @@ class WriteOperationsTest extends TestCase
         $path = sys_get_temp_dir().'/azure-blob-'.uniqid().'.json';
         file_put_contents($path, '{"a":1}');
 
-        Blob::uploadFile('destino/a.json', $path);
+        AzureBlob::uploadFile('destino/a.json', $path);
 
         Http::assertSent(function (Request $request): bool {
             return $request->body() === '{"a":1}'
@@ -154,7 +154,7 @@ class WriteOperationsTest extends TestCase
         $this->expectException(AzureBlobException::class);
         $this->expectExceptionMessage('não existe ou não pode ser lido');
 
-        Blob::uploadFile('a.txt', '/caminho/inexistente/a.txt');
+        AzureBlob::uploadFile('a.txt', '/caminho/inexistente/a.txt');
 
         Http::assertNothingSent();
     }
@@ -167,7 +167,7 @@ class WriteOperationsTest extends TestCase
         fwrite($stream, 'via stream');
         rewind($stream);
 
-        Blob::upload('a.txt', $stream);
+        AzureBlob::upload('a.txt', $stream);
         fclose($stream);
 
         Http::assertSent(fn (Request $request): bool => $request->body() === 'via stream');
@@ -181,7 +181,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 201)]);
 
-        $client = $this->app->make(AzureBlob::class)->build([
+        $client = $this->app->make(BlobManager::class)->build([
             'name' => self::ACCOUNT,
             'key' => self::ACCOUNT_KEY,
             'container' => self::CONTAINER,
@@ -210,7 +210,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 201)]);
 
-        $client = $this->app->make(AzureBlob::class)->build([
+        $client = $this->app->make(BlobManager::class)->build([
             'name' => self::ACCOUNT,
             'key' => self::ACCOUNT_KEY,
             'container' => self::CONTAINER,
@@ -234,7 +234,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 201)]);
 
-        $client = $this->app->make(AzureBlob::class)->build([
+        $client = $this->app->make(BlobManager::class)->build([
             'name' => self::ACCOUNT,
             'key' => self::ACCOUNT_KEY,
             'container' => self::CONTAINER,
@@ -268,7 +268,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 202)]);
 
-        $this->assertTrue(Blob::delete('pasta/a.txt'));
+        $this->assertTrue(AzureBlob::delete('pasta/a.txt'));
 
         Http::assertSent(function (Request $request): bool {
             return $request->method() === 'DELETE'
@@ -281,7 +281,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response($this->errorXml('BlobNotFound', 'não existe'), 404)]);
 
-        $this->assertFalse(Blob::delete('sumiu.txt'));
+        $this->assertFalse(AzureBlob::delete('sumiu.txt'));
     }
 
     public function test_delete_directory_remove_todos_os_blobs_do_prefixo(): void
@@ -292,7 +292,7 @@ class WriteOperationsTest extends TestCase
             ->push('', 202),
         ]);
 
-        $this->assertSame(2, Blob::deleteDirectory('2026'));
+        $this->assertSame(2, AzureBlob::deleteDirectory('2026'));
 
         Http::assertSentCount(3);
     }
@@ -305,7 +305,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 202, ['x-ms-copy-status' => 'success'])]);
 
-        $url = Blob::copy('origem/a.pdf', 'destino/a.pdf');
+        $url = AzureBlob::copy('origem/a.pdf', 'destino/a.pdf');
 
         $this->assertSame($this->blobUrl('destino/a.pdf'), $url);
 
@@ -325,7 +325,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 202, ['x-ms-copy-status' => 'success'])]);
 
-        $url = Blob::copy('a.pdf', 'b.pdf', [
+        $url = AzureBlob::copy('a.pdf', 'b.pdf', [
             'source_container' => 'origem',
             'destination_container' => 'destino',
         ]);
@@ -342,7 +342,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 202, ['x-ms-copy-status' => 'success'])]);
 
-        $this->app->make(AzureBlob::class)->connection('sas')->copy('a.pdf', 'b.pdf');
+        $this->app->make(BlobManager::class)->connection('sas')->copy('a.pdf', 'b.pdf');
 
         Http::assertSent(fn (Request $request): bool => $request->header('x-ms-copy-source')[0]
             === self::ENDPOINT.'/container-sas/a.pdf?'.self::SAS_TOKEN);
@@ -355,7 +355,7 @@ class WriteOperationsTest extends TestCase
             ->push('', 202),
         ]);
 
-        Blob::move('origem.pdf', 'destino.pdf');
+        AzureBlob::move('origem.pdf', 'destino.pdf');
 
         Http::assertSent(fn (Request $request): bool => $request->method() === 'DELETE'
             && $request->url() === $this->blobUrl('origem.pdf'));
@@ -369,7 +369,7 @@ class WriteOperationsTest extends TestCase
             ->push('', 200, ['x-ms-copy-status' => 'success']),
         ]);
 
-        Blob::copy('a.pdf', 'b.pdf', ['wait' => true, 'timeout' => 5]);
+        AzureBlob::copy('a.pdf', 'b.pdf', ['wait' => true, 'timeout' => 5]);
 
         Http::assertSentCount(3);
     }
@@ -382,7 +382,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 200)]);
 
-        $this->assertTrue(Blob::setMetadata('a.pdf', ['origem' => 'lote-2026']));
+        $this->assertTrue(AzureBlob::setMetadata('a.pdf', ['origem' => 'lote-2026']));
 
         Http::assertSent(function (Request $request): bool {
             return $request->method() === 'PUT'
@@ -399,7 +399,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake();
 
-        $client = $this->app->make(AzureBlob::class)->connection('somente-leitura');
+        $client = $this->app->make(BlobManager::class)->connection('somente-leitura');
 
         foreach ([
             'upload' => fn () => $client->upload('a.txt', 'x'),
@@ -424,7 +424,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 201)]);
 
-        $client = $this->app->make(AzureBlob::class)->connection();
+        $client = $this->app->make(BlobManager::class)->connection();
         $travado = $client->readOnly();
 
         $this->assertFalse($client->isReadOnly());
@@ -441,7 +441,7 @@ class WriteOperationsTest extends TestCase
     {
         Http::fake(['*' => Http::response($this->listXml(), 200)]);
 
-        $list = $this->app->make(AzureBlob::class)->connection('somente-leitura')->list();
+        $list = $this->app->make(BlobManager::class)->connection('somente-leitura')->list();
 
         $this->assertTrue($list->isEmpty());
     }
