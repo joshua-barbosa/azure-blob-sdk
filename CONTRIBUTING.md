@@ -16,6 +16,20 @@ Os dois precisam passar. `composer fix` aplica a formatação automaticamente.
 > `laravel/pint` exige 8.1. Para instalar as dependências de desenvolvimento em
 > PHP 8.0: `composer remove --dev laravel/pint --no-update`.
 
+### Pacote Node (`js/`)
+
+```bash
+cd js
+npm install
+npm run typecheck
+npm test
+```
+
+Para os testes contra o Azurite, veja a seção "Desenvolvimento" de
+[js/README.md](js/README.md). As assinaturas Shared Key e SAS são conferidas contra
+vetores gerados pelo SDK PHP (`js/test/unit/signing.test.ts`): uma mudança de
+assinatura num lado precisa ser refletida no outro.
+
 ## O que o CI cobra
 
 A matriz roda Laravel 8 a 13 em PHP 8.0 a 8.4. Vale rodar localmente pelo menos

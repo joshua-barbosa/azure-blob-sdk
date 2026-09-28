@@ -1,0 +1,64 @@
+name: node
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/**'
+      - '.github/workflows/node.yml'
+  pull_request:
+    paths:
+      - 'js/**'
+      - '.github/workflows/node.yml'
+
+defaults:
+  run:
+    working-directory: js
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.19', '22', '24', '26']
+
+    name: Node ${{ matrix.node }}
+
+    # O Azurite valida Shared Key e SAS como o Azure: é o que prova que as
+    # assinaturas funcionam, coisa que um fetch falso não consegue.
+    services:
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite
+        ports:
+          - 10000:10000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: js/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - name: Testes (com e2e no Azurite)
+        run: npm run test:coverage
+        env:
+          AZURITE_URL: http://127.0.0.1:10000
+
+      - run: npm run build
+
+      - name: Pacote instalável
+        run: |
+          npm pack --pack-destination "$RUNNER_TEMP"
+          mkdir "$RUNNER_TEMP/consumer" && cd "$RUNNER_TEMP/consumer"
+          npm init -y > /dev/null
+          npm install "$RUNNER_TEMP"/joshualevy029-azure-blob-sdk-*.tgz
+          node -e "require('@joshualevy029/azure-blob-sdk').BlobManager"
+          node --input-type=module -e "import('@joshualevy029/azure-blob-sdk').then(m => m.BlobManager)"
+          npx azure-blob --version

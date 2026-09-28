@@ -3,6 +3,8 @@
 /.github            export-ignore
 /docs               export-ignore
 /tests              export-ignore
+# O SDK Node vive em js/ e é publicado no npm; não deve chegar ao vendor/.
+/js                 export-ignore
 /.editorconfig      export-ignore
 /.gitattributes     export-ignore
 /.gitignore         export-ignore
