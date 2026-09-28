@@ -24,6 +24,15 @@ final class Path
     }
 
     /**
+     * Codifica cada segmento sem normalizar — para nomes que vieram do próprio
+     * Azure (listagem) e precisam ser endereçados exatamente como estão.
+     */
+    public static function encodeRaw(string $blob): string
+    {
+        return implode('/', array_map('rawurlencode', explode('/', $blob)));
+    }
+
+    /**
      * Remove barras iniciais e colapsa barras duplicadas.
      *
      * `/pasta//arquivo.txt` e `pasta/arquivo.txt` devem apontar para o mesmo

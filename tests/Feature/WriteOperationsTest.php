@@ -76,10 +76,13 @@ class WriteOperationsTest extends TestCase
             'content_encoding' => 'gzip',
         ]);
 
+        // Como propriedade do blob, o Azure só reconhece a forma x-ms-blob-*:
+        // Cache-Control e Content-Disposition padrão são ignorados em silêncio.
         Http::assertSent(function (Request $request): bool {
-            return $request->header('Cache-Control')[0] === 'max-age=3600'
-                && $request->header('Content-Disposition')[0] === 'attachment; filename="a.txt"'
-                && $request->header('Content-Encoding')[0] === 'gzip';
+            return $request->header('x-ms-blob-cache-control')[0] === 'max-age=3600'
+                && $request->header('x-ms-blob-content-disposition')[0] === 'attachment; filename="a.txt"'
+                && $request->header('x-ms-blob-content-encoding')[0] === 'gzip'
+                && ! $request->hasHeader('Cache-Control');
         });
     }
 

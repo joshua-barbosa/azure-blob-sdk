@@ -9,6 +9,41 @@ menores — fixe em `~0.1.0` se precisar de estabilidade.
 
 ## [Não lançado]
 
+### Adicionado
+
+- `files()`, `directories()` e `listNames()` para ler "pastas" e nomes
+  percorrendo todas as páginas.
+- `downloadText()`, `containerExists()` e `ensureContainer()`, que vêm do
+  `azure.py` do vetorizador. Equivalências em
+  [docs/python-migration.md](docs/python-migration.md).
+- Testes e2e contra o Azurite (`--testsuite E2E`, com `AZURITE_URL`) e um job no
+  CI para eles.
+
+### Corrigido
+
+- `cache_control`, `content_disposition`, `content_encoding` e
+  `content_language` eram descartados no upload simples. Eles iam como
+  cabeçalhos padrão, que o Azure ignora no `Put Blob`; agora vão como
+  `x-ms-blob-*`.
+- Uma cópia que terminava `failed`/`aborted` era tratada como concluída, e
+  `move()` apagava a origem mesmo sem o destino existir. Agora ela lança
+  exceção e a origem é preservada.
+- `move()` com origem igual ao destino apagava o blob. Agora é recusado.
+- `downloadTo()` truncava o arquivo de destino antes do download. Um 404 ou
+  uma queda no meio deixavam um arquivo vazio ou parcial. Agora ele grava num
+  temporário, renomeia no fim e cria a pasta de destino quando falta.
+- `deleteDirectory()` renormalizava os nomes vindos da listagem, e blobs como
+  `dir//a` ou `dir/a ` não eram apagados. Agora os nomes são usados exatamente
+  como o Azure os devolve.
+- `uploadFile()` tirava o Content-Type do arquivo local, e um temporário sem
+  extensão virava `application/octet-stream`. Agora o nome do blob tem
+  precedência.
+
+### Alterado
+
+- `deleteDirectory('')` recusa o prefixo vazio em vez de esvaziar o container
+  inteiro.
+
 ## [0.1.0] — 2026-08-13
 
 Primeira versão. Substitui o servidor MCP em Python que expunha o mesmo storage,

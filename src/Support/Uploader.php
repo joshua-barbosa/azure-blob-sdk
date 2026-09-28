@@ -64,7 +64,7 @@ final class Uploader
     {
         $headers = array_merge(
             ['x-ms-blob-type' => 'BlockBlob', 'Content-Type' => self::contentType($options, $path)],
-            self::contentHeaders($options),
+            self::blobContentHeaders($options),
             self::metadataHeaders($options),
             self::conditionalHeaders($options),
         );
@@ -218,24 +218,11 @@ final class Uploader
     }
 
     /**
-     * Cabeçalhos de conteúdo do `Put Blob`.
-     *
-     * @param  array<string,mixed>  $options
-     * @return array<string,string>
-     */
-    private static function contentHeaders(array $options): array
-    {
-        return self::pick($options, [
-            'cache_control' => 'Cache-Control',
-            'content_disposition' => 'Content-Disposition',
-            'content_encoding' => 'Content-Encoding',
-            'content_language' => 'Content-Language',
-        ]);
-    }
-
-    /**
-     * Os mesmos cabeçalhos, na forma exigida pelo `Put Block List` — lá eles
-     * descrevem o blob final, não o corpo XML da requisição.
+     * Propriedades de conteúdo do blob. Vão como `x-ms-blob-*` tanto no
+     * `Put Blob` quanto no `Put Block List`: o Azure ignora `Cache-Control` e
+     * `Content-Disposition` padrão como propriedade do blob, e no
+     * `Put Block List` os cabeçalhos padrão descreveriam o corpo XML da
+     * requisição, não o blob final.
      *
      * @param  array<string,mixed>  $options
      * @return array<string,string>

@@ -232,7 +232,7 @@ class AdapterTest extends TestCase
 
         Http::assertSent(function (Request $request): bool {
             return $request->header('Content-Type')[0] === 'text/markdown'
-                && $request->header('Cache-Control')[0] === 'max-age=60'
+                && $request->header('x-ms-blob-cache-control')[0] === 'max-age=60'
                 && $request->header('x-ms-meta-origem')[0] === 'flysystem';
         });
     }

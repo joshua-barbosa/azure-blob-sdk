@@ -201,7 +201,9 @@ class RestClient
      */
     public function url(string $path, array $query = []): string
     {
-        $url = rtrim($this->config->accountUrl, '/').'/'.Path::encode($path);
+        // O caminho chega pronto do BlobClient: normalizado, ou — para nomes
+        // vindos da listagem — exatamente como o Azure os devolveu.
+        $url = rtrim($this->config->accountUrl, '/').'/'.Path::encodeRaw($path);
 
         $parts = [];
 

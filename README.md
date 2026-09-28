@@ -10,6 +10,11 @@ SDK PHP para o [Azure Blob Storage](https://learn.microsoft.com/rest/api/storage
 
 Suporta **Laravel 8 a 13** / **PHP 8.0+**.
 
+> **Usa Node.js/TypeScript?** Há uma versão JavaScript com a mesma API, as mesmas
+> variáveis de ambiente e integrações com NestJS e FlyDrive (AdonisJS Drive):
+> [`@joshualevy029/azure-blob-sdk`](js/README.md), na pasta [`js/`](js/). Os dois pacotes
+> são independentes — o Composer não baixa a pasta `js/` e o npm não baixa o PHP.
+
 A REST API do Azure é implementada direto sobre o cliente HTTP do Laravel
 (`Illuminate\Http`), com assinatura **Shared Key** (HMAC-SHA256) e geração de
 **Service SAS** nativas. **Não depende do `microsoft/azure-storage-blob`**, que
@@ -275,6 +280,15 @@ foreach (AzureBlob::listAll('2026/') as $item) { /* ... */ }
 // Listagem rasa: subpastas agrupadas em vez da árvore inteira
 $nivel = AzureBlob::directory('2026');
 $nivel->directories;   // BlobItem[] com isDirectory = true
+
+// Só os nomes, percorrendo todas as páginas
+AzureBlob::files('2026');              // ['2026/a.pdf', '2026/b.pdf']
+AzureBlob::files('2026', true);        // inclui as subpastas
+AzureBlob::directories('2026');        // ['2026/janeiro', '2026/fevereiro']
+AzureBlob::listNames('2026/', 50);     // até 50 nomes sob o prefixo
+
+AzureBlob::containerExists();
+AzureBlob::ensureContainer();          // cria se faltar (exige chave da conta)
 ```
 
 ### Baixar
@@ -285,7 +299,8 @@ $conteudo->contents();
 $conteudo->saveTo('/tmp/a.pdf');
 
 AzureBlob::downloadJson('dados.json');               // array direto
-AzureBlob::downloadTo('grande.zip', '/tmp/g.zip');   // stream para disco
+AzureBlob::downloadText('notas.txt');                // string
+AzureBlob::downloadTo('grande.zip', '/tmp/g.zip');   // stream para disco; cria a pasta
 ```
 
 `download()` recusa blobs acima de `max_download_size` com `BlobTooLargeException`.
@@ -361,6 +376,7 @@ O README cobre o uso comum. Para o detalhe de cada parte:
 | [docs/filesystem.md](docs/filesystem.md) | O driver `azure-blob`, os dois adaptadores de Flysystem e as diferenças de comportamento entre Laravel 8 e 9+ |
 | [docs/commands.md](docs/commands.md) | Os oito comandos `azure:*`, suas opções e a regra de assinatura que o parser do Laravel 8 impõe |
 | [docs/mcp-migration.md](docs/mcp-migration.md) | Equivalência com a ferramenta MCP em Python que este pacote substitui |
+| [docs/python-migration.md](docs/python-migration.md) | Equivalência com o `azure.py` do vetorizador, em PHP e em Node |
 | [docs/php-8.0-compat.md](docs/php-8.0-compat.md) | O que o piso de PHP 8.0 custou e como reverter |
 
 ## Tratamento de erros

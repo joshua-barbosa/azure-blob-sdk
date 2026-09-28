@@ -76,6 +76,33 @@ jobs:
       - name: Testes
         run: vendor/bin/phpunit
 
+  e2e:
+    runs-on: ubuntu-latest
+    name: e2e (Azurite)
+
+    # O Http::fake() aceita qualquer cabeçalho; o Azurite valida assinatura,
+    # SAS e propriedades do blob como o Azure.
+    services:
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite
+        ports:
+          - 10000:10000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: hash, json, simplexml, mbstring, fileinfo
+          coverage: none
+
+      - run: composer install --prefer-dist --no-interaction --no-progress
+
+      - run: vendor/bin/phpunit --testsuite E2E
+        env:
+          AZURITE_URL: http://127.0.0.1:10000
+
   lint:
     runs-on: ubuntu-latest
     name: pint
