@@ -9,60 +9,14 @@ menores — fixe em `~0.1.0` se precisar de estabilidade.
 
 ## [Não lançado]
 
-### Adicionado
+## [0.1.0] — 2026-11-16
 
-- Toda requisição leva um `x-ms-client-request-id` (UUID). Em caso de erro, ele
-  e o `x-ms-request-id` da resposta ficam no contexto da exceção
-  (`requestId()`, `clientRequestId()`) e no log.
-- `files()`, `directories()` e `listNames()` para ler "pastas" e nomes
-  percorrendo todas as páginas.
-- `downloadText()`, `containerExists()` e `ensureContainer()`, que vêm do
-  `azure.py` do vetorizador. Equivalências em
-  [docs/python-migration.md](docs/python-migration.md).
-- Testes e2e contra o Azurite (`--testsuite E2E`, com `AZURITE_URL`) e um job no
-  CI para eles.
+Primeira versão publicada. Substitui o servidor MCP em Python que expunha o
+mesmo storage, com paridade completa das 11 operações.
 
-### Alterado
-
-- O SAS gerado por `temporaryUrl()`, `temporaryContainerUrl()` e pela cópia
-  agora sai com `spr=https` quando o endpoint da conta é https: o link deixa de
-  valer em http. Em endpoint http (Azurite) nada muda.
-
-### Corrigido
-
-- O pacote não instalava ao lado do **Guzzle 8**, que o Laravel 13 já traz por
-  padrão: `guzzlehttp/guzzle` estava preso em `^7.5` e `guzzlehttp/psr7` em
-  `^2.4`, e o Composer só resolvia rebaixando o Guzzle da aplicação. As
-  restrições passam a ser `^7.5|^8.0` e `^2.4|^3.0`. Nenhuma mudança de código
-  foi necessária — a suíte e os testes e2e contra o Azurite passam nas duas
-  linhas, e o CI agora roda o Laravel 13 com o Guzzle 7 e com o 8.
-- `cache_control`, `content_disposition`, `content_encoding` e
-  `content_language` eram descartados no upload simples. Eles iam como
-  cabeçalhos padrão, que o Azure ignora no `Put Blob`; agora vão como
-  `x-ms-blob-*`.
-- Uma cópia que terminava `failed`/`aborted` era tratada como concluída, e
-  `move()` apagava a origem mesmo sem o destino existir. Agora ela lança
-  exceção e a origem é preservada.
-- `move()` com origem igual ao destino apagava o blob. Agora é recusado.
-- `downloadTo()` truncava o arquivo de destino antes do download. Um 404 ou
-  uma queda no meio deixavam um arquivo vazio ou parcial. Agora ele grava num
-  temporário, renomeia no fim e cria a pasta de destino quando falta.
-- `deleteDirectory()` renormalizava os nomes vindos da listagem, e blobs como
-  `dir//a` ou `dir/a ` não eram apagados. Agora os nomes são usados exatamente
-  como o Azure os devolve.
-- `uploadFile()` tirava o Content-Type do arquivo local, e um temporário sem
-  extensão virava `application/octet-stream`. Agora o nome do blob tem
-  precedência.
-
-### Alterado
-
-- `deleteDirectory('')` recusa o prefixo vazio em vez de esvaziar o container
-  inteiro.
-
-## [0.1.0] — 2026-08-13
-
-Primeira versão. Substitui o servidor MCP em Python que expunha o mesmo storage,
-com paridade completa das 11 operações.
+O pacote estava pronto desde agosto de 2026, mas nunca chegou a receber uma
+tag: esta versão reúne aquele conteúdo e tudo o que foi acrescentado e
+corrigido desde então.
 
 ### Adicionado
 
@@ -88,11 +42,52 @@ com paridade completa das 11 operações.
 - Exceções tipadas com `status()`, `errorCode()` e `context()`.
 - Mascaramento de chaves, SAS tokens e assinaturas antes de qualquer escrita em
   log.
+- Toda requisição leva um `x-ms-client-request-id` (UUID). Em caso de erro, ele
+  e o `x-ms-request-id` da resposta ficam no contexto da exceção
+  (`requestId()`, `clientRequestId()`) e no log.
+- `files()`, `directories()` e `listNames()` para ler "pastas" e nomes
+  percorrendo todas as páginas.
+- `downloadText()`, `containerExists()` e `ensureContainer()`, que vêm do
+  `azure.py` do vetorizador. Equivalências em
+  [docs/python-migration.md](docs/python-migration.md).
+- Testes e2e contra o Azurite (`--testsuite E2E`, com `AZURITE_URL`) e um job no
+  CI para eles.
+
+### Corrigido antes da publicação
+
+- O pacote não instalava ao lado do **Guzzle 8**, que o Laravel 13 já traz por
+  padrão: `guzzlehttp/guzzle` estava preso em `^7.5` e `guzzlehttp/psr7` em
+  `^2.4`, e o Composer só resolvia rebaixando o Guzzle da aplicação. As
+  restrições passam a ser `^7.5|^8.0` e `^2.4|^3.0`. Nenhuma mudança de código
+  foi necessária — a suíte e os testes e2e contra o Azurite passam nas duas
+  linhas, e o CI agora roda o Laravel 13 com o Guzzle 7 e com o 8.
+- `cache_control`, `content_disposition`, `content_encoding` e
+  `content_language` eram descartados no upload simples. Eles iam como
+  cabeçalhos padrão, que o Azure ignora no `Put Blob`; agora vão como
+  `x-ms-blob-*`.
+- Uma cópia que terminava `failed`/`aborted` era tratada como concluída, e
+  `move()` apagava a origem mesmo sem o destino existir. Agora ela lança
+  exceção e a origem é preservada.
+- `move()` com origem igual ao destino apagava o blob. Agora é recusado.
+- `downloadTo()` truncava o arquivo de destino antes do download. Um 404 ou
+  uma queda no meio deixavam um arquivo vazio ou parcial. Agora ele grava num
+  temporário, renomeia no fim e cria a pasta de destino quando falta.
+- `deleteDirectory()` renormalizava os nomes vindos da listagem, e blobs como
+  `dir//a` ou `dir/a ` não eram apagados. Agora os nomes são usados exatamente
+  como o Azure os devolve.
+- `uploadFile()` tirava o Content-Type do arquivo local, e um temporário sem
+  extensão virava `application/octet-stream`. Agora o nome do blob tem
+  precedência.
+- O SAS gerado por `temporaryUrl()`, `temporaryContainerUrl()` e pela cópia
+  agora sai com `spr=https` quando o endpoint da conta é https: o link deixa de
+  valer em http. Em endpoint http (Azurite) nada muda.
+- `deleteDirectory('')` recusa o prefixo vazio em vez de esvaziar o container
+  inteiro.
 
 ### Compatibilidade
 
-Laravel 8 a 13, PHP 8.0 a 8.4. Validado em PHP 8.0/Laravel 8/Flysystem 1,
-PHP 8.2/Laravel 10 e PHP 8.3/Laravel 13.
+Laravel 8 a 13, PHP 8.0 a 8.4, Guzzle 7 e 8. Validado em PHP 8.0/Laravel 8/Flysystem 1,
+PHP 8.2/Laravel 10 e PHP 8.3/Laravel 13 (este com Guzzle 7 e com Guzzle 8).
 
 [Não lançado]: https://github.com/joshua-barbosa/azure-blob-sdk/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/joshua-barbosa/azure-blob-sdk/releases/tag/v0.1.0
