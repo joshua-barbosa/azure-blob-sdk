@@ -11,6 +11,9 @@ menores — fixe em `~0.1.0` se precisar de estabilidade.
 
 ### Adicionado
 
+- Toda requisição leva um `x-ms-client-request-id` (UUID). Em caso de erro, ele
+  e o `x-ms-request-id` da resposta ficam no contexto da exceção
+  (`requestId()`, `clientRequestId()`) e no log.
 - `files()`, `directories()` e `listNames()` para ler "pastas" e nomes
   percorrendo todas as páginas.
 - `downloadText()`, `containerExists()` e `ensureContainer()`, que vêm do
@@ -19,8 +22,20 @@ menores — fixe em `~0.1.0` se precisar de estabilidade.
 - Testes e2e contra o Azurite (`--testsuite E2E`, com `AZURITE_URL`) e um job no
   CI para eles.
 
+### Alterado
+
+- O SAS gerado por `temporaryUrl()`, `temporaryContainerUrl()` e pela cópia
+  agora sai com `spr=https` quando o endpoint da conta é https: o link deixa de
+  valer em http. Em endpoint http (Azurite) nada muda.
+
 ### Corrigido
 
+- O pacote não instalava ao lado do **Guzzle 8**, que o Laravel 13 já traz por
+  padrão: `guzzlehttp/guzzle` estava preso em `^7.5` e `guzzlehttp/psr7` em
+  `^2.4`, e o Composer só resolvia rebaixando o Guzzle da aplicação. As
+  restrições passam a ser `^7.5|^8.0` e `^2.4|^3.0`. Nenhuma mudança de código
+  foi necessária — a suíte e os testes e2e contra o Azurite passam nas duas
+  linhas, e o CI agora roda o Laravel 13 com o Guzzle 7 e com o 8.
 - `cache_control`, `content_disposition`, `content_encoding` e
   `content_language` eram descartados no upload simples. Eles iam como
   cabeçalhos padrão, que o Azure ignora no `Put Blob`; agora vão como

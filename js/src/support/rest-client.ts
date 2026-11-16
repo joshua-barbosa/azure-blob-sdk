@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 import type { Config, FetchFunction } from '../config.js';
@@ -39,6 +40,16 @@ export interface AzureStreamResponse {
     stream: Readable;
 }
 
+/** Identifica a requisição nos logs de diagnóstico do Azure. */
+const CLIENT_REQUEST_ID = 'x-ms-client-request-id';
+
+interface SentRequest {
+    response: Response;
+    clientRequestId: string;
+    cancel: () => void;
+    aborted: () => boolean;
+}
+
 export class RestClient {
     private signer: SharedKeySigner | null = null;
 
@@ -56,7 +67,7 @@ export class RestClient {
      * @param path Caminho relativo à conta (ex.: `container/pasta/a.txt`), sem encoding.
      */
     async request(method: string, path: string, options: RequestOptions = {}): Promise<AzureResponse> {
-        const { response, cancel, aborted } = await this.send(method, path, options);
+        const { response, clientRequestId, cancel, aborted } = await this.send(method, path, options);
 
         try {
             const body = Buffer.from(await response.arrayBuffer());
@@ -65,9 +76,9 @@ export class RestClient {
                 return { status: response.status, headers: response.headers, body };
             }
 
-            throw this.exception(response.status, response.headers, body.toString('utf8'), method, path);
+            throw this.exception(response.status, response.headers, body.toString('utf8'), method, path, clientRequestId);
         } catch (error) {
-            throw this.wrap(error, method, path, aborted());
+            throw this.wrap(error, method, path, aborted(), clientRequestId);
         } finally {
             cancel();
         }
@@ -80,14 +91,14 @@ export class RestClient {
      * legítimo não deve ser cortado no meio por ele.
      */
     async stream(method: string, path: string, options: RequestOptions = {}): Promise<AzureStreamResponse> {
-        const { response, cancel } = await this.send(method, path, options);
+        const { response, clientRequestId, cancel } = await this.send(method, path, options);
 
         if (!response.ok) {
             // O corpo do erro ainda corre sob o timeout.
             const body = await response.text().catch(() => '');
             cancel();
 
-            throw this.exception(response.status, response.headers, body, method, path);
+            throw this.exception(response.status, response.headers, body, method, path, clientRequestId);
         }
 
         cancel();
@@ -133,17 +144,21 @@ export class RestClient {
             throw ConfigurationError.signingUnavailable(this.config.connection);
         }
 
-        return new SasBuilder(this.config.accountName as string, this.config.accountKey as string, this.config.apiVersion);
+        return new SasBuilder(
+            this.config.accountName as string,
+            this.config.accountKey as string,
+            this.config.apiVersion,
+            // Endpoint https gera SAS que só vale por https. Em http (emulador)
+            // a restrição tornaria o próprio link inutilizável.
+            this.config.accountUrl.toLowerCase().startsWith('https://') ? 'https' : null,
+        );
     }
 
-    private async send(
-        method: string,
-        path: string,
-        options: RequestOptions,
-    ): Promise<{ response: Response; cancel: () => void; aborted: () => boolean }> {
+    private async send(method: string, path: string, options: RequestOptions): Promise<SentRequest> {
         const verb = method.toUpperCase();
         const url = this.url(path, options.query);
         const headers = this.authenticate(verb, url, options.headers ?? {}, options.body ?? null);
+        const clientRequestId = headerValue(headers, CLIENT_REQUEST_ID) ?? '';
 
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), this.config.timeout * 1000);
@@ -167,6 +182,7 @@ export class RestClient {
         try {
             return {
                 response: await fetcher(url, init as RequestInit),
+                clientRequestId,
                 cancel: () => clearTimeout(timer),
                 aborted: () => controller.signal.aborted,
             };
@@ -179,7 +195,7 @@ export class RestClient {
 
             throw new AzureBlobError(`azure-blob: falha de comunicação com o Azure (${reason}).`, {
                 cause: error,
-                context: scrub({ connection: this.config.connection, method: verb, url }),
+                context: scrub({ connection: this.config.connection, method: verb, url, client_request_id: clientRequestId }),
             });
         }
     }
@@ -191,6 +207,11 @@ export class RestClient {
             'x-ms-date': httpDate(),
             ...headers,
         };
+
+        // Respeita o id que o chamador mandou, em qualquer caixa.
+        if (!headerValue(complete, CLIENT_REQUEST_ID)) {
+            complete[CLIENT_REQUEST_ID] = randomUUID();
+        }
 
         if (body !== null && !hasHeader(complete, 'content-length')) {
             complete['Content-Length'] = String(body.byteLength);
@@ -219,11 +240,24 @@ export class RestClient {
     }
 
     /** Traduz uma resposta de erro do Azure em exceção do SDK. */
-    private exception(status: number, headers: Headers, body: string, method: string, path: string): AzureBlobError {
+    private exception(
+        status: number,
+        headers: Headers,
+        body: string,
+        method: string,
+        path: string,
+        clientRequestId: string,
+    ): AzureBlobError {
         // O corpo de erro do Azure é XML; num HEAD ou num stream ele pode estar
         // vazio, e aí o cabeçalho x-ms-error-code é a única pista.
         const error = parseError(body);
         const code = error.code ?? (headers.get('x-ms-error-code') || null);
+
+        // É com estes dois ids que o suporte da Microsoft localiza a requisição.
+        const tracing = {
+            request_id: headers.get('x-ms-request-id') || null,
+            client_request_id: clientRequestId,
+        };
 
         // O caminho é "container/blob", mas operações de container (list) vêm
         // só com o container.
@@ -239,11 +273,12 @@ export class RestClient {
                 status,
                 error_code: code,
                 error_message: error.message,
+                ...tracing,
             }),
         );
 
         if (status === 404) {
-            return BlobNotFoundError.make(blob, this.config.container, code);
+            return BlobNotFoundError.make(blob, this.config.container, code, tracing);
         }
 
         return new AzureBlobError(
@@ -256,13 +291,14 @@ export class RestClient {
                     status,
                     error_code: code,
                     error_message: error.message,
+                    ...tracing,
                 },
             },
         );
     }
 
     /** Falhas na leitura do corpo (ex.: timeout no meio) também viram AzureBlobError. */
-    private wrap(error: unknown, method: string, path: string, timedOut: boolean): AzureBlobError {
+    private wrap(error: unknown, method: string, path: string, timedOut: boolean, clientRequestId: string): AzureBlobError {
         if (error instanceof AzureBlobError) {
             return error;
         }
@@ -271,7 +307,7 @@ export class RestClient {
 
         return new AzureBlobError(`azure-blob: falha de comunicação com o Azure (${reason}).`, {
             cause: error,
-            context: { connection: this.config.connection, method: method.toUpperCase(), path },
+            context: { connection: this.config.connection, method: method.toUpperCase(), path, client_request_id: clientRequestId },
         });
     }
 }
@@ -289,4 +325,12 @@ function describeCause(error: unknown): string {
     const cause = error.cause instanceof Error ? error.cause.message : '';
 
     return cause !== '' && cause !== error.message ? `${error.message}: ${cause}` : error.message;
+}
+
+/** Valor de um cabeçalho, casando o nome sem diferenciar maiúsculas. */
+function headerValue(headers: HeaderMap, name: string): string | null {
+    const key = Object.keys(headers).find((candidate) => candidate.toLowerCase() === name);
+    const value = key === undefined ? undefined : headers[key];
+
+    return value === undefined || String(value) === '' ? null : String(value);
 }

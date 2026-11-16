@@ -201,6 +201,9 @@ azure.temporaryUrl('a.pdf', 1, 'r', { contentDisposition: 'attachment; filename=
 azure.temporaryContainerUrl(1, 'rl');
 ```
 
+O SAS gerado numa conta `https://` sai com `spr=https`: o link não funciona em http. Num
+endpoint `http://` (Azurite) a restrição é omitida.
+
 ### Escrita
 
 ```ts
@@ -250,9 +253,23 @@ o corpo conforme o `Content-Encoding` da resposta e não oferece como desligar i
 navegador faria com a URL do blob. Se você precisa dos bytes comprimidos exatamente como foram
 enviados, grave o blob **sem** `contentEncoding` (por exemplo, como `application/gzip`).
 
+## Referência
+
+O README cobre o uso comum. Para o detalhe de cada parte:
+
+| Documento | Conteúdo |
+|---|---|
+| [docs/api.md](https://github.com/joshua-barbosa/azure-blob-sdk/blob/main/js/docs/api.md) | `BlobManager`, `BlobClient` e os objetos de resultado — todos os métodos, opções e as propriedades dos erros |
+| [docs/authentication.md](https://github.com/joshua-barbosa/azure-blob-sdk/blob/main/js/docs/authentication.md) | Os três modos de autenticação, como o Shared Key é assinado, as permissões e o protocolo (`spr`) do SAS, e os identificadores de rastreio |
+| [docs/cli.md](https://github.com/joshua-barbosa/azure-blob-sdk/blob/main/js/docs/cli.md) | Os oito comandos do `azure-blob`, as opções globais, de onde vem a configuração e os códigos de saída |
+| [docs/integrations.md](https://github.com/joshua-barbosa/azure-blob-sdk/blob/main/js/docs/integrations.md) | Módulo NestJS (opções, tokens de injeção) e driver FlyDrive (mapeamento de métodos, visibilidade) |
+
 ## Erros
 
-Toda falha é um `AzureBlobError`, com `status`, `errorCode` (o código do Azure) e `context`:
+Toda falha é um `AzureBlobError`, com `status`, `errorCode` (o código do Azure) e `context`.
+Toda requisição leva um `x-ms-client-request-id` próprio (UUID); no erro, `clientRequestId` e
+`requestId` (o `x-ms-request-id` da resposta) são o que o suporte da Microsoft pede para
+localizar a requisição. O SDK não refaz tentativas: isso fica com quem o usa.
 
 | Classe | Quando |
 |---|---|
@@ -374,7 +391,6 @@ const azure = new BlobManager({
 | Log | canal `azure-blob` do Laravel | `logger` opcional (silencioso por padrão) |
 | Timeout | total da requisição | até a resposta começar (streams não são cortados) |
 | Nomes com `.`/`..` | aceitos | recusados (o parser de URL do `fetch` resolveria `a/../b` para `b`) |
-| `deleteDirectory('')` | esvazia o container | recusado: exige um prefixo |
 
 O `toJSON()` dos resultados produz o mesmo formato do `toArray()` do PHP (snake_case, datas ATOM),
 então a saída JSON das duas linguagens — inclusive a dos CLIs — é intercambiável.

@@ -64,6 +64,12 @@ export class SasBuilder {
         private readonly accountName: string,
         private readonly accountKey: string,
         private readonly apiVersion: string = API_VERSION,
+        /**
+         * Vira o `spr` do token: com `https` o Azure recusa o link em http.
+         * `null` deixa o campo de fora, o que o Azure lê como `https,http` — só
+         * faz sentido para endpoint http, como o do emulador.
+         */
+        private readonly protocol: string | null = null,
     ) {}
 
     /** Token SAS (sem `?`) para um blob específico. */
@@ -93,6 +99,7 @@ export class SasBuilder {
         const signedExpiry = formatSasDate(resolveExpiry(expiry));
         const signedStart = options.start ? formatSasDate(options.start) : '';
         const signedIp = options.ip?.trim() ?? '';
+        const signedProtocol = this.protocol?.trim() ?? '';
         const contentDisposition = options.contentDisposition?.trim() ?? '';
         const contentType = options.contentType?.trim() ?? '';
 
@@ -105,7 +112,7 @@ export class SasBuilder {
             canonicalizedResource,
             '', // signedIdentifier (stored access policy)
             signedIp,
-            '', // signedProtocol — vazio significa https,http
+            signedProtocol, // vazio significa https,http
             this.apiVersion,
             resource,
             '', // signedSnapshotTime
@@ -131,6 +138,10 @@ export class SasBuilder {
 
         if (signedIp !== '') {
             query.push(['sip', signedIp]);
+        }
+
+        if (signedProtocol !== '') {
+            query.push(['spr', signedProtocol]);
         }
 
         if (contentDisposition !== '') {

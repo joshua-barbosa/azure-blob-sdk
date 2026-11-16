@@ -76,7 +76,7 @@ padrão, agora configurável em `max_download_size`, e acrescenta `stream()` e
 arquivos acima de 256 MiB. O pacote fatia automaticamente acima de `block_size`.
 
 **Erros.** O MCP devolvia texto. O pacote lança exceções tipadas com `status()`,
-`errorCode()` e `context()` — ver a seção de tratamento de erros do README.
+`errorCode()`, `requestId()`, `clientRequestId()` e `context()` — ver a seção de tratamento de erros do README.
 
 **Cópia.** Ambos assinam um SAS para a origem, porque o serviço do Azure lê o
 blob de origem por conta própria. O pacote acrescenta `wait`, que aguarda a

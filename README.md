@@ -43,6 +43,10 @@ AzureBlob::connection('contratos')->uploadJson('metadados.json', $dados);
 | 9.x | 8.1 | 3.x | ✅ | ⚠️ Suporte a ser removido |
 | 8.x | 8.0 | 1.x | ✅ | ⚠️ Suporte a ser removido |
 
+**Guzzle 7 e 8** são aceitos (`guzzlehttp/guzzle: ^7.5|^8.0`,
+`guzzlehttp/psr7: ^2.4|^3.0`). O Laravel 13 instala o Guzzle 8 por padrão, e o
+CI roda essa linha com as duas versões.
+
 > ### ⚠️ Laravel 8, 9, 10 e 11 serão descontinuados
 >
 > O suporte a essas versões existe como **medida paliativa**, para que projetos
@@ -342,6 +346,9 @@ AzureBlob::temporaryUrl('a.pdf', 2, 'r');                 // 2 horas
 AzureBlob::temporaryUrl('a.pdf', now()->addDay(), 'rw');  // instante explícito
 ```
 
+O SAS gerado numa conta `https://` sai com `spr=https`: o link não funciona em
+http. Num endpoint `http://` (Azurite) a restrição é omitida.
+
 ### Storage::disk
 
 ```php
@@ -371,8 +378,8 @@ O README cobre o uso comum. Para o detalhe de cada parte:
 
 | Documento | Conteúdo |
 |---|---|
-| [docs/api.md](docs/api.md) | `AzureBlob\BlobClient` e `AzureBlob\Results` — todos os métodos, suas opções e os objetos de retorno (`BlobList`, `BlobItem`, `BlobProperties`, `BlobContent`) |
-| [docs/authentication.md](docs/authentication.md) | Os três modos de autenticação, como o Shared Key é assinado e por que a ordem das permissões do SAS importa |
+| [docs/api.md](docs/api.md) | `AzureBlob\BlobClient` e `AzureBlob\Results` — todos os métodos, suas opções, os objetos de retorno (`BlobList`, `BlobItem`, `BlobProperties`, `BlobContent`) e os métodos das exceções |
+| [docs/authentication.md](docs/authentication.md) | Os três modos de autenticação, como o Shared Key é assinado, a ordem das permissões e o protocolo (`spr`) do SAS, e os identificadores de rastreio |
 | [docs/filesystem.md](docs/filesystem.md) | O driver `azure-blob`, os dois adaptadores de Flysystem e as diferenças de comportamento entre Laravel 8 e 9+ |
 | [docs/commands.md](docs/commands.md) | Os oito comandos `azure:*`, suas opções e a regra de assinatura que o parser do Laravel 8 impõe |
 | [docs/mcp-migration.md](docs/mcp-migration.md) | Equivalência com a ferramenta MCP em Python que este pacote substitui |
@@ -395,9 +402,16 @@ try {
     $e->getMessage();
     $e->status();      // 403
     $e->errorCode();   // 'AuthorizationPermissionMismatch'
+    $e->requestId();        // x-ms-request-id devolvido pelo Azure
+    $e->clientRequestId();  // x-ms-client-request-id enviado pelo SDK
     $e->context();     // dados já sanitizados
 }
 ```
+
+Toda requisição leva um `x-ms-client-request-id` próprio (UUID). Os dois ids
+também vão para o log e são o que o suporte da Microsoft pede para localizar
+uma requisição. O SDK não refaz tentativas: repetir após um `503` ou uma queda
+de conexão é decisão de quem o usa.
 
 | Exceção | Quando |
 |---|---|
@@ -422,21 +436,34 @@ composer test
 > PHP 8.0, remova-o antes: `composer remove --dev laravel/pint --no-update`. É o que
 > a linha de PHP 8.0 do CI faz.
 
-268 testes, 619 asserções. Cobertura: **87,13% de linhas / 75,29% de métodos**
+296 testes, 675 asserções. Cobertura: **87,22% de linhas / 76,45% de métodos**
 (medida com Xdebug em PHP 8.3 / Laravel 13).
 
-Rodado localmente em três pontos da matriz antes da publicação:
+Rodado localmente em quatro pontos da matriz:
 
-| PHP | Laravel | Flysystem | PHPUnit | Resultado |
-|---|---|---|---|---|
-| 8.0.30 | 8.83 | 1.1 | 9.6 | 268 testes, 21 pulados |
-| 8.2.33 | 10.50 | 3.35 | 10.5 | 268 testes |
-| 8.3.33 | 13.25 | 3.35 | 12.5 | 268 testes |
+| PHP | Laravel | Guzzle | Flysystem | PHPUnit | Resultado |
+|---|---|---|---|---|---|
+| 8.0.30 | 8.83 | 8.5 | 1.1 | 9.6 | 296 testes, 24 pulados |
+| 8.2.35 | 10.50 | 8.5 | 3.36 | 10.5 | 296 testes, 3 pulados |
+| 8.3.36 | 13.42 | 8.5 | 3.36 | 12.5 | 296 testes, 3 pulados |
+| 8.3.36 | 13.42 | 7.16 | 3.36 | 12.5 | 296 testes, 3 pulados |
 
-Os 21 pulados no Laravel 8 são os que instanciam o adaptador de Flysystem 3
+Os 3 pulados em toda linha são os e2e, que só rodam com `AZURITE_URL`. Os
+outros 21 do Laravel 8 são os que instanciam o adaptador de Flysystem 3
 diretamente — lá esse caminho é coberto via `Storage::disk()`.
 
 A suíte usa `Http::fake()` — nenhuma requisição sai para o Azure.
+
+Os testes e2e são a exceção: rodam contra o [Azurite](https://github.com/Azure/Azurite),
+que valida assinatura Shared Key e SAS como o Azure, e são pulados sem `AZURITE_URL`:
+
+```bash
+docker run -d -p 10000:10000 mcr.microsoft.com/azure-storage/azurite azurite-blob --blobHost 0.0.0.0
+AZURITE_URL=http://127.0.0.1:10000 vendor/bin/phpunit --testsuite E2E
+```
+
+Mantenha a porta `10000` dos dois lados: com ela remapeada (`-p 10777:10000`) o
+emulador não alcança a URL de origem de uma cópia e `copy()` devolve HTTP 500.
 
 Para cobertura local:
 

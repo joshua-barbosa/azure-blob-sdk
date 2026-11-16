@@ -37,22 +37,42 @@ export class AzureBlobError extends Error {
 
         return typeof code === 'string' && code !== '' ? code : null;
     }
+
+    /**
+     * `x-ms-request-id` da resposta: o identificador que o Azure atribuiu à
+     * requisição e que o suporte da Microsoft pede para localizá-la.
+     */
+    get requestId(): string | null {
+        const id = this.context['request_id'];
+
+        return typeof id === 'string' && id !== '' ? id : null;
+    }
+
+    /**
+     * `x-ms-client-request-id` enviado pelo SDK. Aparece nos logs de
+     * diagnóstico da conta e existe mesmo quando o Azure não chegou a responder.
+     */
+    get clientRequestId(): string | null {
+        const id = this.context['client_request_id'];
+
+        return typeof id === 'string' && id !== '' ? id : null;
+    }
 }
 
 /** O Azure respondeu 404 para um blob ou container. */
 export class BlobNotFoundError extends AzureBlobError {
     override readonly name: string = 'BlobNotFoundError';
 
-    static make(blob: string, container: string, errorCode: string | null = null): BlobNotFoundError {
+    static make(blob: string, container: string, errorCode: string | null = null, extra: ErrorContext = {}): BlobNotFoundError {
         // Operações de container (list) chegam sem blob: o que falta é o container.
         if (blob === '') {
             return new BlobNotFoundError(`azure-blob: container "${container}" não encontrado.`, {
-                context: { blob, container, status: 404, error_code: errorCode ?? 'ContainerNotFound' },
+                context: { blob, container, status: 404, error_code: errorCode ?? 'ContainerNotFound', ...extra },
             });
         }
 
         return new BlobNotFoundError(`azure-blob: blob "${blob}" não encontrado no container "${container}".`, {
-            context: { blob, container, status: 404, error_code: errorCode ?? 'BlobNotFound' },
+            context: { blob, container, status: 404, error_code: errorCode ?? 'BlobNotFound', ...extra },
         });
     }
 }

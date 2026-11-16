@@ -29,6 +29,13 @@ jobs:
           - php: '8.3'
             laravel: '12.*'
             testbench: '10.*'
+          # O Laravel 13 aceita Guzzle 7 e 8 e resolve para o 8 por padrão.
+          # A linha com `guzzle: '^7.5'` segura o 7 para as duas continuarem
+          # cobertas.
+          - php: '8.3'
+            laravel: '13.*'
+            testbench: '11.*'
+            guzzle: '^7.5'
           - php: '8.3'
             laravel: '13.*'
             testbench: '11.*'
@@ -36,7 +43,7 @@ jobs:
             laravel: '13.*'
             testbench: '11.*'
 
-    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}${{ matrix.guzzle && format(' / Guzzle {0}', matrix.guzzle) || '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -68,10 +75,11 @@ jobs:
             --with "illuminate/contracts:${{ matrix.laravel }}" \
             --with "illuminate/filesystem:${{ matrix.laravel }}" \
             --with "illuminate/http:${{ matrix.laravel }}" \
-            --with "illuminate/support:${{ matrix.laravel }}"
+            --with "illuminate/support:${{ matrix.laravel }}" \
+            ${{ matrix.guzzle && format('--with "guzzlehttp/guzzle:{0}"', matrix.guzzle) || '' }}
 
       - name: Versões resolvidas
-        run: composer show laravel/framework league/flysystem orchestra/testbench phpunit/phpunit || true
+        run: composer show laravel/framework guzzlehttp/guzzle guzzlehttp/psr7 league/flysystem orchestra/testbench phpunit/phpunit || true
 
       - name: Testes
         run: vendor/bin/phpunit

@@ -9,13 +9,19 @@ use Throwable;
  */
 class BlobNotFoundException extends AzureBlobException
 {
-    public static function make(string $blob, string $container, ?Throwable $previous = null): self
+    /**
+     * @param  array<string,mixed>  $context  Contexto extra (ex.: ids de rastreio).
+     */
+    public static function make(string $blob, string $container, ?Throwable $previous = null, array $context = []): self
     {
         return new self(
             sprintf('azure-blob: blob "%s" não encontrado no container "%s".', $blob, $container),
             404,
             $previous,
-            ['blob' => $blob, 'container' => $container, 'status' => 404, 'error_code' => 'BlobNotFound']
+            array_merge(
+                ['blob' => $blob, 'container' => $container, 'status' => 404, 'error_code' => 'BlobNotFound'],
+                $context,
+            )
         );
     }
 }

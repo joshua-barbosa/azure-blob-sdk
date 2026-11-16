@@ -91,10 +91,38 @@ e descarta letras desconhecidas, então `'dwcar'` vira `'racwd'` sozinho.
 
 Ordem canônica: `r a c w d x y l t f m e o p i`.
 
+**Protocolo (`spr`).** Quando o endpoint da conta é `https://`, o SAS sai com
+`spr=https` e o Azure recusa o link em http (`AuthorizationProtocolMismatch`).
+O valor entra no string-to-sign (campo `signedProtocol`), então não dá para
+retirá-lo da URL depois. Num endpoint `http://` — o Azurite — o campo é
+omitido, o que o Azure lê como `https,http`; com a restrição o emulador
+recusaria o próprio link.
+
+## Identificadores de rastreio
+
+Toda requisição leva um `x-ms-client-request-id` com um UUID novo; se o
+chamador já mandar esse cabeçalho, o valor dele é mantido. No modo Shared Key
+ele é assinado junto com os demais `x-ms-*`.
+
+Quando o Azure responde com erro, a exceção e o log guardam os dois ids:
+
+| Contexto | Acessor | Origem |
+|---|---|---|
+| `request_id` | `requestId()` | `x-ms-request-id` da resposta; `null` se o Azure não o devolveu |
+| `client_request_id` | `clientRequestId()` | o `x-ms-client-request-id` enviado |
+
+São os dois valores que o suporte da Microsoft pede para localizar uma
+requisição, e o `client_request_id` também aparece nos logs de diagnóstico da
+conta. Numa falha de comunicação (sem resposta) só existe o `client_request_id`.
+
+O SDK não refaz tentativas: repetir após `503 ServerBusy`, `500` ou queda de
+conexão fica a cargo da aplicação.
+
 ## Somente leitura
 
 `readonly => true` faz `BlobClient` lançar `ReadOnlyException` em `upload`,
-`delete`, `copy`, `move`, `deleteDirectory` e `setMetadata` **antes** de qualquer
+`delete`, `copy`, `move`, `deleteDirectory`, `setMetadata` e `ensureContainer`
+**antes** de qualquer
 requisição sair. É proteção contra engano — não substitui as permissões do SAS
 nem o RBAC da conta, que continuam sendo a fronteira real.
 

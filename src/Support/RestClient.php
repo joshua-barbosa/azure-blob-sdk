@@ -23,6 +23,9 @@ use Throwable;
  */
 class RestClient
 {
+    /** Identifica a requisição nos logs de diagnóstico do Azure. */
+    private const CLIENT_REQUEST_ID = 'x-ms-client-request-id';
+
     private ?SharedKeySigner $signer = null;
 
     private ?LoggerInterface $logger = null;
@@ -71,7 +74,7 @@ class RestClient
         $method = strtoupper($method);
         $url = $this->url($path, $query);
 
-        $headers = $this->authenticate($method, $url, $headers, $body);
+        $headers = $this->authenticate($method, $url, self::withClientRequestId($headers), $body);
 
         $contentType = (string) ($headers['Content-Type'] ?? 'application/octet-stream');
 
@@ -103,7 +106,12 @@ class RestClient
                 sprintf('azure-blob: falha de comunicação com o Azure (%s).', $exception->getMessage()),
                 0,
                 $exception,
-                Redactor::scrub(['connection' => $this->config->connection, 'method' => $method, 'url' => $url])
+                Redactor::scrub([
+                    'connection' => $this->config->connection,
+                    'method' => $method,
+                    'url' => $url,
+                    'client_request_id' => self::clientRequestId($headers),
+                ])
             );
         }
 
@@ -129,25 +137,34 @@ class RestClient
         array $options = [],
         array $allow = [],
     ): Response {
+        // O id nasce aqui, e não em send(), para poder ir também na exceção.
+        $headers = self::withClientRequestId($headers);
+
         $response = $this->send($method, $path, $query, $headers, $body, $options);
 
         if ($response->successful() || in_array($response->status(), $allow, true)) {
             return $response;
         }
 
-        throw $this->exception($response, $method, $path);
+        throw $this->exception($response, $method, $path, self::clientRequestId($headers));
     }
 
     /**
      * Traduz uma resposta de erro do Azure em exceção do SDK.
      */
-    private function exception(Response $response, string $method, string $path): AzureBlobException
+    private function exception(Response $response, string $method, string $path, ?string $clientRequestId): AzureBlobException
     {
         $status = $response->status();
         // O corpo de erro do Azure é XML; num download com `stream` ele pode
         // estar vazio, e aí o cabeçalho x-ms-error-code é a única pista.
         $error = Xml::error((string) $response->body());
         $code = $error['code'] ?? $response->header('x-ms-error-code') ?: null;
+
+        // É com estes dois ids que o suporte da Microsoft localiza a requisição.
+        $tracing = [
+            'request_id' => $response->header('x-ms-request-id') ?: null,
+            'client_request_id' => $clientRequestId,
+        ];
 
         // O caminho é "container/blob", mas operações de container (list) vêm
         // só com o container. Sem a checagem, strpos() devolve false, o (int)
@@ -156,7 +173,7 @@ class RestClient
         $blob = $separator === false ? '' : Path::normalize(substr($path, $separator + 1));
 
         if ($status === 404) {
-            $exception = BlobNotFoundException::make($blob, $this->config->container, $response->toException());
+            $exception = BlobNotFoundException::make($blob, $this->config->container, $response->toException(), $tracing);
         } else {
             $exception = new AzureBlobException(
                 sprintf(
@@ -175,7 +192,7 @@ class RestClient
                     'status' => $status,
                     'error_code' => $code,
                     'error_message' => $error['message'],
-                ]
+                ] + $tracing
             );
         }
 
@@ -186,7 +203,7 @@ class RestClient
             'status' => $status,
             'error_code' => $code,
             'error_message' => $error['message'],
-        ]));
+        ] + $tracing));
 
         return $exception;
     }
@@ -270,7 +287,49 @@ class RestClient
             (string) $this->config->accountName,
             (string) $this->config->accountKey,
             $this->config->apiVersion,
+            // Endpoint https gera SAS que só vale por https. Em http (emulador)
+            // a restrição tornaria o próprio link inutilizável.
+            str_starts_with(strtolower($this->config->accountUrl), 'https://') ? 'https' : null,
         );
+    }
+
+    /**
+     * Garante um `x-ms-client-request-id`, respeitando o que o chamador mandou.
+     *
+     * @param  array<string,string|int>  $headers
+     * @return array<string,string|int>
+     */
+    private static function withClientRequestId(array $headers): array
+    {
+        if (self::clientRequestId($headers) !== null) {
+            return $headers;
+        }
+
+        return $headers + [self::CLIENT_REQUEST_ID => self::uuid()];
+    }
+
+    /**
+     * @param  array<string,string|int>  $headers
+     */
+    private static function clientRequestId(array $headers): ?string
+    {
+        foreach ($headers as $name => $value) {
+            if (strtolower((string) $name) === self::CLIENT_REQUEST_ID && (string) $value !== '') {
+                return (string) $value;
+            }
+        }
+
+        return null;
+    }
+
+    /** UUID v4. Feito à mão para não exigir `ramsey/uuid` de quem usa o pacote. */
+    private static function uuid(): string
+    {
+        $bytes = random_bytes(16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0F) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3F) | 0x80);
+
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
     }
 
     public function logger(): LoggerInterface
