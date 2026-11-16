@@ -35,6 +35,17 @@ describe('paridade com o SDK PHP', () => {
         expect(signed.Authorization).toBe('SharedKey contateste:ExmR8GbIdSgBe+IFOrH7nsDrdk+cApYJNtE3NI91S6E=');
     });
 
+    it('protocolo entra no spr e na assinatura (7º campo do string-to-sign)', () => {
+        const https = new SasBuilder(ACCOUNT, KEY, '2022-11-02', 'https');
+        const token = new URLSearchParams(https.forContainer('meu-container', new Date('2026-06-01T12:00:00Z'), 'rl'));
+
+        expect(token.get('spr')).toBe('https');
+        expect(token.get('sig')).toBe(
+            hmac(['rl', '', '2026-06-01T12:00:00Z', '/blob/contateste/meu-container', '', '', 'https', '2022-11-02', 'c', '', '', '', '', '', '', ''].join('\n')),
+        );
+        expect(new URLSearchParams(builder.forContainer('meu-container')).has('spr')).toBe(false);
+    });
+
     it('SAS de blob produz o mesmo token', () => {
         const token = builder.forBlob('meu-container', 'pasta/ação.pdf', new Date('2026-06-01T12:00:00Z'), 'wr', {
             start: new Date('2026-01-01T00:00:00Z'),

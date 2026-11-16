@@ -50,6 +50,23 @@ inicial, então `/a//b.txt` e `a/b.txt` apontam para o mesmo blob.
 No modo SAS URL o token do container é reaproveitado e `expiry`/`permissions`
 são ignorados — ver [authentication.md](authentication.md).
 
+Em conta `https://` o SAS novo sai com `spr=https` e não funciona em http.
+
+## Erros
+
+Toda falha é uma `AzureBlobException` (ou subclasse):
+
+| Método | Devolve |
+|---|---|
+| `status()` | Status HTTP, quando houve resposta |
+| `errorCode()` | Código do Azure, ex.: `BlobNotFound` |
+| `requestId()` | `x-ms-request-id` da resposta |
+| `clientRequestId()` | `x-ms-client-request-id` enviado pelo SDK |
+| `context()` | Todos os dados acima e mais, já sem credenciais |
+
+Não há retry automático — ver
+[authentication.md](authentication.md#identificadores-de-rastreio).
+
 ## Container
 
 | Método | Retorno | Observação |

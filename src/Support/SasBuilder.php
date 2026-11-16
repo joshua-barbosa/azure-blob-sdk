@@ -13,6 +13,10 @@ use DateTimeZone;
  * O layout do string-to-sign vale para `sv` >= 2020-12-06; versões anteriores
  * têm menos campos e produziriam assinatura inválida.
  *
+ * `$protocol` vira o `spr` do token: com `https` o Azure recusa o link em
+ * http. `null` deixa o campo de fora, o que o Azure lê como `https,http` — só
+ * faz sentido para endpoint http, como o do emulador.
+ *
  * @see https://learn.microsoft.com/rest/api/storageservices/create-service-sas
  */
 final class SasBuilder
@@ -27,6 +31,7 @@ final class SasBuilder
         private string $accountName,
         private string $accountKey,
         private string $apiVersion = Config::API_VERSION,
+        private ?string $protocol = null,
     ) {}
 
     /**
@@ -94,6 +99,7 @@ final class SasBuilder
         $signedExpiry = self::instant($expiry);
         $signedStart = $start === null ? '' : self::format($start);
         $signedIp = $ip === null ? '' : trim($ip);
+        $signedProtocol = trim((string) $this->protocol);
 
         // Ordem posicional obrigatória para sv >= 2020-12-06. Os campos vazios
         // continuam ocupando a própria linha.
@@ -104,7 +110,7 @@ final class SasBuilder
             $canonicalizedResource,
             '',              // signedIdentifier (stored access policy)
             $signedIp,
-            '',              // signedProtocol — vazio significa https,http
+            $signedProtocol, // vazio significa https,http
             $this->apiVersion,
             $resource,
             '',              // signedSnapshotTime
@@ -134,6 +140,10 @@ final class SasBuilder
 
         if ($signedIp !== '') {
             $query['sip'] = $signedIp;
+        }
+
+        if ($signedProtocol !== '') {
+            $query['spr'] = $signedProtocol;
         }
 
         return http_build_query($query, '', '&', PHP_QUERY_RFC3986);

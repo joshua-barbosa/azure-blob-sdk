@@ -74,6 +74,42 @@ class SasBuilderTest extends TestCase
         );
     }
 
+    public function test_sem_protocolo_o_sas_nao_leva_spr(): void
+    {
+        $query = $this->query($this->builder()->forBlob('c', 'a.txt', 1));
+
+        $this->assertArrayNotHasKey('spr', $query);
+    }
+
+    public function test_protocolo_https_entra_no_spr_e_na_assinatura(): void
+    {
+        $expiry = new DateTimeImmutable('2026-06-01 12:00:00', new DateTimeZone('UTC'));
+        $builder = new SasBuilder(self::ACCOUNT, self::KEY, '2022-11-02', 'https');
+
+        $query = $this->query($builder->forContainer('meu-container', $expiry, 'rl'));
+
+        $this->assertSame('https', $query['spr']);
+
+        // signedProtocol é o 7º campo do string-to-sign.
+        $stringToSign = implode("\n", [
+            'rl',
+            '',
+            '2026-06-01T12:00:00Z',
+            '/blob/contateste/meu-container',
+            '',
+            '',
+            'https',
+            '2022-11-02',
+            'c',
+            '', '', '', '', '', '', '',
+        ]);
+
+        $this->assertSame(
+            base64_encode(hash_hmac('sha256', $stringToSign, base64_decode(self::KEY, true), true)),
+            $query['sig']
+        );
+    }
+
     public function test_horas_viram_expiracao_a_partir_de_agora(): void
     {
         $query = $this->query($this->builder()->forBlob('c', 'a.txt', 3));

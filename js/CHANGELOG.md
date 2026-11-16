@@ -9,6 +9,20 @@ estiver em `0.x`, mudanças incompatíveis podem acontecer entre versões menore
 
 ## [Não lançado]
 
+### Adicionado
+
+- Toda requisição leva um `x-ms-client-request-id` (UUID). Em caso de erro, ele e o
+  `x-ms-request-id` da resposta ficam no contexto (`requestId`, `clientRequestId`) e no log.
+
+- Documentação de referência em `js/docs/`: API, autenticação, CLI e integrações (NestJS e
+  FlyDrive).
+
+### Alterado
+
+- O SAS gerado por `temporaryUrl()`, `temporaryContainerUrl()` e pela cópia agora sai com
+  `spr=https` quando o endpoint da conta é https: o link deixa de valer em http. Em endpoint
+  http (Azurite) nada muda.
+
 ## [0.1.0] — 2026-09-28
 
 Primeira versão. Porte do SDK PHP para Node.js/TypeScript, com a mesma API.
